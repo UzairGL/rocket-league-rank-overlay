@@ -7,6 +7,7 @@ const { computeView } = require('../../core/view');
 // Événements :
 //   'change'     le modèle d'affichage a changé (nouvelle file, match terminé, playlist changée)
 //   'visibility' la fenêtre doit peut-être apparaître ou disparaître
+//   'web'        les réglages de la page web locale ont changé (démarrer, arrêter, rouvrir)
 class OverlayState extends EventEmitter {
   constructor({ store, watcher }) {
     super();
@@ -61,6 +62,16 @@ class OverlayState extends EventEmitter {
   setAlwaysShow(value) {
     this.store.set({ alwaysShow: Boolean(value) });
     this.emit('visibility');
+  }
+
+  setWebEnabled(value) {
+    this.store.set({ webEnabled: Boolean(value) });
+    this.emit('web');
+  }
+
+  setWebLan(value) {
+    this.store.set({ webLan: Boolean(value) });
+    this.emit('web');
   }
 
   requestShow() {

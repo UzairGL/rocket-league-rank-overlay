@@ -12,7 +12,7 @@ function displayLabel(d) {
 }
 
 // Reconstruit à chaque ouverture pour refléter les réglages courants.
-// actions : { quit, listDisplays(), moveToDisplay(id|null) }
+// actions : { quit, listDisplays(), moveToDisplay(id|null), web: { urls() }, copy(text), help() }
 function buildMenu(state, actions) {
   const displays = actions.listDisplays();
   const items = PLAYLISTS.map((p) => ({
@@ -48,6 +48,23 @@ function buildMenu(state, actions) {
     checked: state.alwaysShow,
     click: (item) => state.setAlwaysShow(item.checked),
   });
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Page web locale',
+    type: 'checkbox',
+    checked: state.settings.webEnabled,
+    click: (item) => state.setWebEnabled(item.checked),
+  });
+  if (state.settings.webEnabled) {
+    items.push({
+      label: 'Ouverte au réseau local (téléphone)',
+      type: 'checkbox',
+      checked: state.settings.webLan,
+      click: (item) => state.setWebLan(item.checked),
+    });
+    for (const url of actions.web.urls()) items.push({ label: `Copier ${url}`, click: () => actions.copy(url) });
+  }
+  items.push({ type: 'separator' }, { label: 'Overlay invisible ?', click: actions.help });
   items.push({ type: 'separator' }, { label: 'Quitter', click: actions.quit });
   return Menu.buildFromTemplate(items);
 }

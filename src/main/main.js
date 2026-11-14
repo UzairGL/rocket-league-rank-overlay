@@ -1,11 +1,12 @@
 const path = require('path');
-const { app, ipcMain } = require('electron');
+const { app, ipcMain, clipboard, dialog } = require('electron');
 const { LogWatcher } = require('./logWatcher');
 const { Store } = require('./store');
 const { OverlayState } = require('./overlayState');
 const { createOverlayWindow, listDisplays } = require('./overlayWindow');
 const { popupMenu, createTray } = require('./menu');
 const { logDir } = require('./paths');
+const { WebServer } = require('./webServer');
 
 // Pas de processus GPU : l'overlay n'affiche que du texte et quelques barres.
 app.disableHardwareAcceleration();
@@ -19,6 +20,34 @@ let watcher = null;
 let state = null;
 let overlay = null;
 let tray = null; // référence gardée pour que l'icône ne soit pas ramassée par le GC
+let web = null;
+
+const HELP = {
+  type: 'info',
+  title: 'Overlay invisible ?',
+  message: "L'overlay est affiché par-dessus le jeu, mais il peut rester caché.",
+  detail: [
+    "Il se remet au premier plan toutes les 2 secondes. S'il reste invisible :",
+    '',
+    "• vérifie l'écran choisi (menu Écran) : il s'ouvre par défaut sur l'écran secondaire s'il y en a un ;",
+    '• passe Rocket League en mode « Fenêtré » ou « sans bordure » : en plein écran exclusif, Windows peut le masquer ;',
+    '• ou ouvre la page web locale (menu « Page web locale ») sur un téléphone, une tablette, un navigateur ou OBS.',
+    '',
+    "L'overlay ne s'injecte volontairement pas dans le jeu, à cause d'Easy Anti-Cheat.",
+  ].join('\n'),
+  buttons: ['OK'],
+};
+
+// Démarre, arrête ou rouvre la page web selon les réglages.
+async function applyWeb() {
+  try {
+    if (state.settings.webEnabled) await web.start({ lan: state.settings.webLan });
+    else await web.stop();
+  } catch (err) {
+    state.setWebEnabled(false);
+    dialog.showErrorBox('Page web locale', `Impossible de démarrer la page web : ${err.message}`);
+  }
+}
 
 app.whenReady().then(() => {
   store = new Store(path.join(app.getPath('userData'), 'overlay-data.json'));
@@ -33,8 +62,15 @@ app.whenReady().then(() => {
     quit: () => app.quit(),
     listDisplays,
     moveToDisplay: overlay.moveToDisplay,
+    web: { urls: () => web.urls() },
+    copy: (text) => clipboard.writeText(text),
+    help: () => dialog.showMessageBox(HELP),
   };
   tray = createTray(state, actions);
+
+  web = new WebServer({ state, rendererDir: path.join(__dirname, '..', 'renderer') });
+  state.on('web', applyWeb);
+  applyWeb();
 
   ipcMain.handle('overlay:get-view', () => state.view());
   ipcMain.on('overlay:menu', () => popupMenu(state, overlay.window, actions));
@@ -51,6 +87,7 @@ app.on('second-instance', () => {
 
 app.on('before-quit', () => {
   if (watcher) watcher.stop();
+  if (web) web.stop();
   if (store) store.flush();
 });
 
