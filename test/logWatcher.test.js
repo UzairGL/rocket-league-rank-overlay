@@ -89,8 +89,10 @@ test('au démarrage, les matchs terminés non encore résolus du journal courant
 
 test("« jeu fermé » n'est annoncé qu'après plusieurs constats d'affilée (une lecture ratée ne compte pas)", () => {
   const t = setup();
+  const old = new Date(Date.now() - 60 * 60 * 1000);
+  fs.utimesSync(t.file, old, old); // dernière écriture visible il y a une heure : seul le verrou compte
   let held = true;
-  const w = new LogWatcher(t.dir, { activeMs: 0, isHeldOpen: () => held });
+  const w = new LogWatcher(t.dir, { isHeldOpen: () => held });
   const states = [];
   w.on('active', (a) => states.push(a));
   const poll = () => w.updateActive(w.stat());
