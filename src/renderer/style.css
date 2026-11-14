@@ -152,3 +152,31 @@ html, body {
 
 /* Page web : fond sombre (sans ?transparent). */
 .web-bg, .web-bg body { background: #0d1626; min-height: 100vh; }
+
+/* Série en cours : pastille sur le bord supérieur du tableau, bleue (victoires) ou orange (défaites). */
+.streak {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  padding: 0 16px;
+  transform: translateX(-50%) skewX(-14deg);
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 18px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.streak.win { background: var(--blue); }
+.streak.loss { background: var(--orange-deep); }
+.pop-in { animation: pop-in 0.45s cubic-bezier(0.3, 1.5, 0.5, 1); }
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateX(-50%) skewX(-14deg) translateY(6px); }
+  100% { opacity: 1; transform: translateX(-50%) skewX(-14deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in { animation: none; }
+}

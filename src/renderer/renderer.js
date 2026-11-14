@@ -9,7 +9,10 @@
     down: $('down'),
     up: $('up'),
     note: $('note'),
+    streak: $('streak'),
+    streakText: $('streak-text'),
   };
+  const MIN_STREAK = 2; // une série de 1 n'est pas une série : on l'affiche à partir de 2
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Quatre segments, un par division.
@@ -23,6 +26,7 @@
   });
 
   let prev = null;
+  let prevStreak = null;
 
   function countTo(node, from, to) {
     if (reduceMotion || from === to || !Number.isFinite(from)) {
@@ -52,6 +56,21 @@
     setTimeout(() => chip.remove(), 1100);
   }
 
+  // Série en cours : « 3 victoires d'affilée » (bleu) ou « 4 défaites d'affilée » (orange).
+  function renderStreak(streak) {
+    if (!streak || streak.count < MIN_STREAK) {
+      el.streak.hidden = true;
+      prevStreak = null;
+      return;
+    }
+    const key = `${streak.type}${streak.count}`;
+    el.streakText.textContent = `${streak.count} ${streak.type === 'W' ? 'victoires' : 'défaites'} d'affilée`;
+    el.streak.className = `streak ${streak.type === 'W' ? 'win' : 'loss'}`;
+    el.streak.hidden = false;
+    if (key !== prevStreak) flash(el.streak, 'pop-in');
+    prevStreak = key;
+  }
+
   function renderEmpty(view) {
     el.mmr.textContent = '—';
     el.rank.textContent = view && view.reason === 'no-log' ? 'Journal introuvable' : 'Lance une file classée';
@@ -60,6 +79,7 @@
     el.down.textContent = '';
     el.up.textContent = '';
     el.note.textContent = '';
+    renderStreak(null);
     fills.forEach((f) => { f.style.width = '0%'; });
     prev = null;
   }
@@ -84,6 +104,7 @@
     el.wins.textContent = String(view.session.w);
     el.losses.textContent = String(view.session.l);
     countTo(el.mmr, prev ? prev.mmr : view.mmr, view.mmr);
+    renderStreak(view.streak);
 
     el.down.textContent = view.toDown != null ? `${approx(view, firstDiv, view.edgeKnown.demo)}−${view.toDown}` : '';
     el.up.textContent =

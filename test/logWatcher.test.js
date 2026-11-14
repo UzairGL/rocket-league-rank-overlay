@@ -121,18 +121,21 @@ test('readHistory relit le journal et ses sauvegardes sans doublon', () => {
 
 test("signale quand le jeu devient actif puis inactif d'après la date d'écriture du journal", async () => {
   const t = setup();
-  t.watcher.activeMs = 150;
   const states = [];
   t.watcher.on('active', (a) => states.push(a));
-  t.watcher.start(); // journal tout juste écrit : actif
-  await wait(60);
+  const until = async (condition) => {
+    for (let i = 0; i < 150 && !condition(); i++) await wait(20);
+  };
+  t.watcher.start(); // journal tout juste écrit : actif, annoncé tout de suite
   assert.deepEqual(states, [true]);
   assert.equal(t.watcher.isActive(), true);
-  await wait(250); // plus aucune écriture : inactif
+  const old = new Date(Date.now() - 10 * 60 * 1000);
+  fs.utimesSync(t.file, old, old); // plus aucune écriture depuis dix minutes
+  await until(() => states.length >= 2);
   assert.deepEqual(states, [true, false]);
   assert.equal(t.watcher.isActive(), false);
-  fs.appendFileSync(t.file, 'le jeu réécrit\n'); // reprise
-  await wait(80);
+  fs.appendFileSync(t.file, 'le jeu réécrit\n'); // reprise : la date du fichier redevient récente
+  await until(() => states.length >= 3);
   t.watcher.stop();
   assert.deepEqual(states, [true, false, true]);
 });
@@ -175,12 +178,16 @@ test('« jeu actif » dès que le verrou apparaît, « inactif » quand il dispa
   const w = new LogWatcher(t.dir, { intervalMs: 20, isHeldOpen: () => held });
   const states = [];
   w.on('active', (a) => states.push(a));
+  // On attend chaque événement au lieu de compter des durées : « fermé » demande plusieurs constats.
+  const until = async (condition) => {
+    for (let i = 0; i < 150 && !condition(); i++) await wait(20);
+  };
   w.start();
-  await wait(60);
+  await until(() => states.length >= 1); // état initial : inactif
   held = true;
-  await wait(80);
+  await until(() => states.length >= 2); // le verrou apparaît : actif tout de suite
   held = false;
-  await wait(80);
+  await until(() => states.length >= 3); // le verrou disparaît : inactif après plusieurs constats
   w.stop();
   assert.deepEqual(states, [false, true, false]);
 });
