@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const MAX_SAMPLES = 5000;
-const DEFAULT_SETTINGS = { playlist: 11, x: null, y: null };
+const DEFAULT_SETTINGS = { playlist: 11, x: null, y: null, alwaysShow: false };
 
 // Persistance JSON minimale : historique des relevés (pour la calibration d'une saison à l'autre)
 // et réglages de la fenêtre. Écritures regroupées pour ne pas solliciter le disque.

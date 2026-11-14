@@ -1,9 +1,10 @@
 const path = require('path');
-const { app, BrowserWindow, ipcMain, Menu, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, screen } = require('electron');
 const { computeView } = require('../../core/view');
 const { LogWatcher } = require('./logWatcher');
 const { Store } = require('./store');
 const { logDir } = require('./paths');
+const { createTrayIcon } = require('./trayIcon');
 
 // Pas de processus GPU : l'overlay n'affiche que du texte et quelques barres.
 app.disableHardwareAcceleration();
@@ -21,8 +22,11 @@ const WIN_W = 470;
 const WIN_H = 170;
 
 let win = null;
+let tray = null;
 let store = null;
 let watcher = null;
+let gameActive = false; // le jeu tourne (journal écrit dans les 3 dernières minutes)
+let forceShow = false; // l'appli a été relancée à la main : on affiche jusqu'à la fermeture
 let pendingGames = 0; // matchs terminés dont le résultat n'apparaît qu'à la prochaine file
 
 function currentView() {
@@ -46,6 +50,7 @@ function createWindow() {
     transparent: true,
     resizable: false,
     hasShadow: false,
+    show: false, // affichée seulement quand le jeu tourne (voir applyVisibility)
     skipTaskbar: true,
     focusable: false, // ne vole jamais le focus au jeu
     backgroundColor: '#00000000',
@@ -58,6 +63,15 @@ function createWindow() {
   });
   win.setAlwaysOnTop(true, 'screen-saver');
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  win.once('ready-to-show', applyVisibility);
+}
+
+// Visible quand le jeu tourne, ou en permanence si l'utilisateur l'a demandé.
+function applyVisibility() {
+  if (!win || win.isDestroyed()) return;
+  const visible = store.settings.alwaysShow || gameActive || forceShow;
+  if (visible && !win.isVisible()) win.showInactive();
+  else if (!visible && win.isVisible()) win.hide();
 }
 
 // Déplacement manuel de la fenêtre (le clic droit reste libre pour le menu).
@@ -76,8 +90,9 @@ function onDrag(_event, phase, dx, dy) {
   }
 }
 
-function showMenu() {
-  const template = [
+// Reconstruit à chaque ouverture pour refléter les réglages courants.
+function buildMenu() {
+  return Menu.buildFromTemplate([
     ...PLAYLISTS.map((p) => ({
       label: p.label,
       type: 'radio',
@@ -88,9 +103,30 @@ function showMenu() {
       },
     })),
     { type: 'separator' },
+    {
+      label: 'Toujours afficher',
+      type: 'checkbox',
+      checked: store.settings.alwaysShow,
+      click: (item) => {
+        store.set({ alwaysShow: item.checked });
+        applyVisibility();
+      },
+    },
+    { type: 'separator' },
     { label: 'Quitter', click: () => app.quit() },
-  ];
-  Menu.buildFromTemplate(template).popup({ window: win });
+  ]);
+}
+
+function showMenu() {
+  buildMenu().popup({ window: win });
+}
+
+function createTray() {
+  tray = new Tray(createTrayIcon());
+  tray.setToolTip('Rocket League rank overlay');
+  const open = () => tray.popUpContextMenu(buildMenu());
+  tray.on('click', open);
+  tray.on('right-click', open);
 }
 
 app.whenReady().then(() => {
@@ -109,6 +145,10 @@ app.whenReady().then(() => {
     pendingGames += 1;
     pushView();
   });
+  watcher.on('active', (active) => {
+    gameActive = active;
+    applyVisibility();
+  });
   watcher.start();
 
   ipcMain.handle('overlay:get-view', () => currentView());
@@ -116,10 +156,13 @@ app.whenReady().then(() => {
   ipcMain.on('overlay:drag', onDrag);
 
   createWindow();
+  createTray();
 });
 
 app.on('second-instance', () => {
-  if (win) win.showInactive();
+  // Relancer l'appli force l'affichage, même si le jeu est fermé.
+  forceShow = true; // temporaire : non enregistré dans les réglages
+  applyVisibility();
 });
 
 app.on('before-quit', () => {

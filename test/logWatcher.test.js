@@ -68,6 +68,29 @@ test('readHistory relit le journal et ses sauvegardes sans doublon', () => {
   assert.deepEqual(t.watcher.readHistory().map((s) => s.mmr), [1120, 1140]);
 });
 
+test("signale quand le jeu devient actif puis inactif d'après la date d'écriture du journal", async () => {
+  const t = setup();
+  t.watcher.activeMs = 150;
+  const states = [];
+  t.watcher.on('active', (a) => states.push(a));
+  t.watcher.start(); // journal tout juste écrit : actif
+  await wait(60);
+  assert.deepEqual(states, [true]);
+  assert.equal(t.watcher.isActive(), true);
+  await wait(250); // plus aucune écriture : inactif
+  assert.deepEqual(states, [true, false]);
+  assert.equal(t.watcher.isActive(), false);
+  fs.appendFileSync(t.file, 'le jeu réécrit\n'); // reprise
+  await wait(80);
+  t.watcher.stop();
+  assert.deepEqual(states, [true, false, true]);
+});
+
+test('sans journal, le jeu est considéré inactif', () => {
+  const w = new LogWatcher(path.join(os.tmpdir(), 'rl-inexistant-' + Date.now()));
+  assert.equal(w.isActive(), false);
+});
+
 test('un dossier absent ne fait pas échouer la lecture', () => {
   const w = new LogWatcher(path.join(os.tmpdir(), 'rl-inexistant-' + Date.now()));
   assert.deepEqual(w.readHistory(), []);

@@ -5,16 +5,21 @@ const { LogParser } = require('../../core/logparser');
 
 const LIVE_FILE = 'Launch.log';
 const MAX_CHUNK = 4 * 1024 * 1024;
+// Le jeu écrit dans son journal toutes les 60 s tant qu'il tourne (mesuré). Trois minutes sans
+// écriture = le jeu est fermé.
+const ACTIVE_MS = 3 * 60 * 1000;
 
 // Surveille Launch.log en lecture seule : un simple `stat` toutes les `intervalMs`, et une lecture
 // uniquement quand le fichier a grossi. Rien n'est injecté dans le jeu, rien ne lit sa mémoire.
 //
 // Événements : 'sample' (relevé de MMR à l'entrée en file), 'finished' (match classé terminé).
 class LogWatcher extends EventEmitter {
-  constructor(dir, { intervalMs = 2000 } = {}) {
+  constructor(dir, { intervalMs = 2000, activeMs = ACTIVE_MS } = {}) {
     super();
     this.dir = dir;
     this.intervalMs = intervalMs;
+    this.activeMs = activeMs;
+    this.active = null;
     this.offset = 0;
     this.birth = 0;
     this.rest = '';
@@ -66,12 +71,27 @@ class LogWatcher extends EventEmitter {
     return out.sort((a, b) => a.ts - b.ts);
   }
 
+  // Le jeu tourne-t-il ? Déduit de la date de dernière écriture du journal, sans lancer de commande.
+  isActive(now = Date.now()) {
+    const st = this.stat();
+    return st !== null && now - st.mtimeMs < this.activeMs;
+  }
+
+  updateActive(st) {
+    const active = st !== null && Date.now() - st.mtimeMs < this.activeMs;
+    if (active !== this.active) {
+      this.active = active;
+      this.emit('active', active);
+    }
+  }
+
   start() {
     const st = this.stat();
     if (st) {
       this.offset = st.size;
       this.birth = st.birthtimeMs;
     }
+    this.updateActive(st);
     this.timer = setInterval(() => this.poll(), this.intervalMs);
   }
 
@@ -82,6 +102,7 @@ class LogWatcher extends EventEmitter {
 
   poll() {
     const st = this.stat();
+    this.updateActive(st);
     if (!st) return;
     // Nouveau fichier (le jeu a été relancé) ou fichier tronqué : on repart du début.
     if (st.birthtimeMs !== this.birth || st.size < this.offset) {
