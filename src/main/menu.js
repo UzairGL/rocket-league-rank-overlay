@@ -28,7 +28,7 @@ function buildMenu(state, actions) {
       label: 'Écran',
       submenu: [
         {
-          label: 'Automatique (écran secondaire)',
+          label: 'Automatique (écran principal)',
           type: 'radio',
           checked: state.settings.displayId == null,
           click: () => actions.moveToDisplay(null),

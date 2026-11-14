@@ -52,7 +52,7 @@ L'overlay est une fenêtre « toujours au premier plan » : il ne s'injecte pas 
 - Mesuré sur un poste Windows 11, jeu en mode sans bordure 2560 × 1440 : la fenêtre s'affiche bien par-dessus le jeu.
 - Windows ne remet pas toujours une fenêtre devant un jeu lancé **après** elle (observé : l'overlay lancé 14 secondes avant le jeu restait caché derrière). L'appli se repose donc au premier plan toutes les 2 secondes tant qu'elle est affichée ; vérifié en plaçant volontairement le jeu devant : elle revient en moins de 2 secondes.
 - Non vérifié : le plein écran « exclusif » du jeu, où Windows peut masquer toute fenêtre externe. Dans ce cas : mode fenêtré ou sans bordure, autre écran, ou page web ci-dessous.
-- Deux écrans : l'overlay s'ouvre par défaut sur l'écran secondaire (menu **Écran** pour choisir). Une position glissée à la main est conservée tant que l'écran reste branché.
+- Deux écrans : l'overlay s'ouvre par défaut sur l'écran principal, où se trouve en général le jeu (menu **Écran** pour choisir un autre écran). Une position glissée à la main est conservée tant que l'écran reste branché.
 
 ## Page web locale
 

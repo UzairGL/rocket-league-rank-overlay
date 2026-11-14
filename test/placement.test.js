@@ -12,11 +12,15 @@ test('un seul écran : en haut à droite de cet écran', () => {
   assert.deepEqual(place([main]), { x: 2560 - W - MARGIN, y: MARGIN, displayId: 1 });
 });
 
-test("deux écrans : par défaut l'écran secondaire, là où le jeu ne le cache pas", () => {
+test("deux écrans : par défaut l'écran principal, là où se trouve le jeu", () => {
   const p = place([main, side]);
-  assert.equal(p.displayId, 2);
-  assert.equal(p.x, 2560 + 1707 - W - MARGIN);
-  assert.equal(p.y, -155 + MARGIN);
+  assert.equal(p.displayId, 1);
+  assert.equal(p.x, 2560 - W - MARGIN);
+  assert.equal(p.y, MARGIN);
+});
+
+test("l'ordre dans lequel Windows liste les écrans ne change pas le choix par défaut", () => {
+  assert.equal(place([side, main]).displayId, 1);
 });
 
 test("l'écran choisi dans le menu est respecté", () => {

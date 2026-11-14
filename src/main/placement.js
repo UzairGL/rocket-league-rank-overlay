@@ -4,8 +4,8 @@
 //  1. Une position enregistrée (glissée par l'utilisateur) est reprise tant que la fenêtre y tient
 //     entièrement sur un écran encore branché.
 //  2. Sinon : l'écran choisi dans le menu, s'il existe encore.
-//  3. Sinon, par défaut : le premier écran NON principal s'il y en a un (le jeu est en général sur
-//     l'écran principal, donc l'overlay y resterait caché derrière), sinon l'écran principal.
+//  3. Sinon, par défaut : l'écran principal, où se trouve en général le jeu. L'overlay s'y affiche
+//     bien par-dessus (mesuré), et il se remet au premier plan tout seul.
 // Dans tous les cas la fenêtre est posée en haut à droite de l'écran retenu.
 
 const MARGIN = 24;
@@ -34,7 +34,7 @@ function choosePlacement({ displays, settings = {}, width, height }) {
   }
 
   const wanted = settings.displayId != null ? displays.find((d) => d.id === settings.displayId) : null;
-  const target = wanted || displays.find((d) => !d.primary) || displays[0];
+  const target = wanted || displays.find((d) => d.primary) || displays[0];
   return { ...topRight(target.workArea, width), displayId: target.id };
 }
 

@@ -29,7 +29,7 @@ const HELP = {
   detail: [
     "Il se remet au premier plan toutes les 2 secondes. S'il reste invisible :",
     '',
-    "• vérifie l'écran choisi (menu Écran) : il s'ouvre par défaut sur l'écran secondaire s'il y en a un ;",
+    "• vérifie l'écran choisi (menu Écran) : il s'ouvre par défaut sur l'écran principal ;",
     '• passe Rocket League en mode « Fenêtré » ou « sans bordure » : en plein écran exclusif, Windows peut le masquer ;',
     '• ou ouvre la page web locale (menu « Page web locale ») sur un téléphone, une tablette, un navigateur ou OBS.',
     '',
