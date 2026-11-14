@@ -1,7 +1,7 @@
 // Transforme l'historique des relevés en modèle d'affichage.
 const { locate, tableFor } = require('./ranks');
 const { calibrate } = require('./calibration');
-const { ownSamples, settle } = require('./samples');
+const { ownSamples, settle, streakOf } = require('./samples');
 
 const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // une pause > 3 h ouvre une nouvelle session
 const DEFAULT_GAIN = 9;
@@ -111,6 +111,8 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0, sessionStart
     avgGain: Math.round(avgGain * 10) / 10,
     avgLoss: Math.round(avgLoss * 10) / 10,
     session,
+    // Série en cours dans la session (comme les victoires et défaites : remise à zéro avec elle).
+    streak: streakOf(run, unit),
     history: samples.slice(-30).map((s) => s.mmr),
     // `specific` = false : la playlist n'a pas de table propre, les divisions sont estimées avec celle du 2v2.
     thresholds: { specific, season: table.meta.season, updated: table.meta.updated },

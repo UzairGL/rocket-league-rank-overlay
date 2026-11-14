@@ -48,4 +48,29 @@ function settle(previous, current, unit = DEFAULT_UNIT) {
   return { w, l: n - w, clean: false };
 }
 
-module.exports = { isOwn, ownSamples, settle, DEFAULT_UNIT };
+// Série en cours : victoires ou défaites consécutives à la fin de la liste de relevés (triés par date).
+//
+// Retourne { type: 'W' | 'L', count } ou null s'il n'y a pas encore de résultat.
+// Quand plusieurs résultats arrivent d'un coup (forfait dont le résultat est en retard), l'ordre dans lequel
+// ils ont eu lieu est inconnu : un groupe de victoires seules (ou de défaites seules) prolonge la série ; un
+// groupe mixte (1 victoire et 1 défaite) la rend incertaine, donc on la remet à zéro plutôt que de risquer
+// d'afficher une fausse série.
+function streakOf(samples, unit = DEFAULT_UNIT) {
+  let type = null;
+  let count = 0;
+  for (let i = 1; i < samples.length; i++) {
+    const r = settle(samples[i - 1], samples[i], unit);
+    if (!r) continue;
+    if (r.w > 0 && r.l > 0) {
+      type = null;
+      count = 0;
+    } else {
+      const next = r.w > 0 ? 'W' : 'L';
+      count = type === next ? count + r.w + r.l : r.w + r.l;
+      type = next;
+    }
+  }
+  return type ? { type, count } : null;
+}
+
+module.exports = { isOwn, ownSamples, settle, streakOf, DEFAULT_UNIT };

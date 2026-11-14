@@ -81,3 +81,48 @@ test("l'unité de variation d'un match sert à répartir, et le total reste le n
 test('un saut de plus de 50 MMR (nouvelle saison) ne compte pas', () => {
   assert.equal(settle(...pair(1100, 1200, 1)), null);
 });
+
+// --- streakOf : série en cours --------------------------------------------------------------------------
+
+const { streakOf } = require('../core/samples');
+
+// Relevés sans « absorbs » (anciens) : un match par variation de MMR.
+const run = (...mmrs) => mmrs.map((m, i) => sample(m, 16, i * 10));
+const withAbsorbs = (m, i, absorbs) => ({ ...sample(m, 16, i * 10), absorbs });
+
+test('victoires consécutives', () => {
+  assert.deepEqual(streakOf(run(1100, 1109, 1118, 1127)), { type: 'W', count: 3 });
+});
+
+test('défaites consécutives', () => {
+  assert.deepEqual(streakOf(run(1100, 1091, 1082)), { type: 'L', count: 2 });
+});
+
+test('un résultat contraire casse la série et en ouvre une autre', () => {
+  assert.deepEqual(streakOf(run(1100, 1109, 1118, 1109)), { type: 'L', count: 1 });
+  assert.deepEqual(streakOf(run(1100, 1091, 1082, 1091, 1100)), { type: 'W', count: 2 });
+});
+
+test("sans résultat, pas de série", () => {
+  assert.equal(streakOf([]), null);
+  assert.equal(streakOf(run(1100)), null);
+  assert.equal(streakOf(run(1100, 1100)), null);
+});
+
+test("un MMR inchangé (résultat pas encore arrivé) n'interrompt pas la série", () => {
+  const list = [withAbsorbs(1100, 0, null), withAbsorbs(1109, 1, 1), withAbsorbs(1109, 2, 0), withAbsorbs(1118, 3, 1)];
+  assert.deepEqual(streakOf(list), { type: 'W', count: 2 });
+});
+
+test('un groupe de victoires seules prolonge la série', () => {
+  const list = [withAbsorbs(1100, 0, null), withAbsorbs(1109, 1, 1), withAbsorbs(1127, 2, 2)];
+  assert.deepEqual(streakOf(list), { type: 'W', count: 3 });
+});
+
+test("un groupe mixte (victoire et défaite arrivées ensemble) rend l'ordre inconnu : la série repart de zéro", () => {
+  // Forfait en retard : −10 et +9 arrivent d'un coup, on ne sait pas lequel est le plus récent.
+  const mixed = [withAbsorbs(1139, 0, null), withAbsorbs(1139, 1, 0), withAbsorbs(1138, 2, 2)];
+  assert.equal(streakOf(mixed), null);
+  // Le résultat suivant, lui, est connu : nouvelle série.
+  assert.deepEqual(streakOf([...mixed, withAbsorbs(1148, 3, 1)]), { type: 'W', count: 1 });
+});

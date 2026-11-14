@@ -170,3 +170,36 @@ test("la moyenne des gains n'est pas faussée par les résultats groupés", () =
   assert.equal(v.avgGain, 9.5); // (10 + 9) / 2
   assert.equal(v.avgLoss, 9); // aucune défaite « propre » : valeur par défaut
 });
+
+// --- Série en cours ---------------------------------------------------------------------------------------
+
+test('la vue expose la série de victoires en cours', () => {
+  const v = view([sample(1100, 16, 0), sample(1109, 16, 10), sample(1118, 16, 20), sample(1127, 16, 30)]);
+  assert.deepEqual(v.streak, { type: 'W', count: 3 });
+});
+
+test('la vue expose la série de défaites en cours', () => {
+  const v = view([sample(1127, 16, 0), sample(1118, 16, 10), sample(1109, 16, 20)]);
+  assert.deepEqual(v.streak, { type: 'L', count: 2 });
+});
+
+test('la série repart avec la session : une remise à zéro la remet à zéro', () => {
+  const list = [sample(1100, 16, 0), sample(1109, 16, 10), sample(1118, 16, 20), sample(1127, 16, 30), sample(1136, 16, 40)];
+  assert.deepEqual(view(list).streak, { type: 'W', count: 4 });
+  const v = view(list, { sessionStart: sample(0, 0, 25).ts }); // remise à zéro après le 3e relevé
+  assert.deepEqual(v.streak, { type: 'W', count: 1 }); // seul le dernier résultat est dans la nouvelle session
+});
+
+test('pas de série avant le premier résultat de la session', () => {
+  assert.equal(view([sample(1100, 16, 0)]).streak, null);
+});
+
+test("le forfait dont le résultat arrive avec le match suivant ne fausse pas la série", () => {
+  const list = [
+    { ...sample(1139, 16, 0), absorbs: null },
+    { ...sample(1139, 16, 10), absorbs: 0 },
+    { ...sample(1138, 16, 20), absorbs: 2 }, // forfait (défaite) et victoire arrivés ensemble : ordre inconnu
+    { ...sample(1148, 16, 30), absorbs: 1 }, // victoire
+  ];
+  assert.deepEqual(view(list).streak, { type: 'W', count: 1 });
+});
