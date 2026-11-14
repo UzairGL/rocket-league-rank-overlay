@@ -5,8 +5,8 @@ const { LogParser } = require('../../core/logparser');
 
 const LIVE_FILE = 'Launch.log';
 const MAX_CHUNK = 4 * 1024 * 1024;
-// Le jeu écrit dans son journal toutes les 60 s tant qu'il tourne (mesuré). Trois minutes sans
-// écriture = le jeu est fermé.
+// Repli quand le verrou n'est pas disponible : le jeu écrit dans son journal toutes les 60 s tant
+// qu'il tourne ; trois minutes sans écriture visible = le jeu est fermé.
 const ACTIVE_MS = 3 * 60 * 1000;
 
 // Surveille Launch.log en lecture seule : un simple `stat` toutes les `intervalMs`, et une lecture
@@ -14,11 +14,13 @@ const ACTIVE_MS = 3 * 60 * 1000;
 //
 // Événements : 'sample' (relevé de MMR à l'entrée en file), 'finished' (match classé terminé).
 class LogWatcher extends EventEmitter {
-  constructor(dir, { intervalMs = 2000, activeMs = ACTIVE_MS } = {}) {
+  // isHeldOpen : remplaçable pour les tests ; par défaut, la vraie vérification du verrou.
+  constructor(dir, { intervalMs = 2000, activeMs = ACTIVE_MS, isHeldOpen } = {}) {
     super();
     this.dir = dir;
     this.intervalMs = intervalMs;
     this.activeMs = activeMs;
+    this.isHeldOpen = isHeldOpen || (() => this.heldOpen());
     this.active = null;
     this.offset = 0;
     this.birth = 0;
@@ -71,14 +73,31 @@ class LogWatcher extends EventEmitter {
     return out.sort((a, b) => a.ts - b.ts);
   }
 
-  // Le jeu tourne-t-il ? Déduit de la date de dernière écriture du journal, sans lancer de commande.
+  // Le jeu tient-il le journal ouvert ? Sous Windows, il l'ouvre sans partage en écriture : essayer de
+  // l'ouvrir en écriture échoue (EBUSY) tant qu'il tourne. On ne modifie rien, on referme aussitôt.
+  // Ailleurs (pas de verrou obligatoire) l'ouverture réussit toujours : on retombe sur la date.
+  heldOpen() {
+    try {
+      fs.closeSync(fs.openSync(path.join(this.dir, LIVE_FILE), 'r+'));
+      return false;
+    } catch (err) {
+      return err.code === 'EBUSY';
+    }
+  }
+
+  // Le jeu tourne-t-il ? Journal tenu ouvert, ou écrit récemment. La date seule ne suffit pas :
+  // Windows la met à jour avec retard pour un fichier ouvert (mesuré : 5 minutes de retard).
+  computeActive(st, now = Date.now()) {
+    if (st === null) return false;
+    return this.isHeldOpen() || now - st.mtimeMs < this.activeMs;
+  }
+
   isActive(now = Date.now()) {
-    const st = this.stat();
-    return st !== null && now - st.mtimeMs < this.activeMs;
+    return this.computeActive(this.stat(), now);
   }
 
   updateActive(st) {
-    const active = st !== null && Date.now() - st.mtimeMs < this.activeMs;
+    const active = this.computeActive(st);
     if (active !== this.active) {
       this.active = active;
       this.emit('active', active);

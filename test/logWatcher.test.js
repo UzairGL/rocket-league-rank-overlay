@@ -113,3 +113,65 @@ test('un dossier absent ne fait pas échouer la lecture', () => {
   assert.equal(w.exists(), false);
   w.poll();
 });
+
+// --- Détection « le jeu tourne » par le verrou du journal -----------------------------------------
+
+test('un journal tenu ouvert par le jeu = actif, même si sa date est ancienne', () => {
+  const t = setup();
+  const old = new Date(Date.now() - 60 * 60 * 1000);
+  fs.utimesSync(t.file, old, old); // dernière écriture visible il y a une heure
+  const idle = new LogWatcher(t.dir, { isHeldOpen: () => false });
+  const held = new LogWatcher(t.dir, { isHeldOpen: () => true });
+  assert.equal(idle.isActive(), false);
+  assert.equal(held.isActive(), true);
+});
+
+test("sans verrou, la date récente suffit toujours (autres systèmes)", () => {
+  const t = setup();
+  const w = new LogWatcher(t.dir, { isHeldOpen: () => false });
+  assert.equal(w.isActive(), true); // journal tout juste écrit
+});
+
+test('« jeu actif » dès que le verrou apparaît, « inactif » quand il disparaît', async () => {
+  const t = setup();
+  const old = new Date(Date.now() - 60 * 60 * 1000);
+  fs.utimesSync(t.file, old, old);
+  let held = false;
+  const w = new LogWatcher(t.dir, { intervalMs: 20, isHeldOpen: () => held });
+  const states = [];
+  w.on('active', (a) => states.push(a));
+  w.start();
+  await wait(60);
+  held = true;
+  await wait(80);
+  held = false;
+  await wait(80);
+  w.stop();
+  assert.deepEqual(states, [false, true, false]);
+});
+
+test('Windows : un vrai processus qui tient le fichier sans partage en écriture est détecté', { skip: process.platform !== 'win32' }, async () => {
+  const t = setup();
+  const { spawn } = require('child_process');
+  const script = `$f=[IO.File]::Open('${t.file.replace(/'/g, "''")}','Open','ReadWrite','Read'); Start-Sleep 6`;
+  const child = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore' });
+  try {
+    const w = new LogWatcher(t.dir);
+    let seen = false;
+    for (let i = 0; i < 100 && !seen; i++) {
+      seen = w.heldOpen();
+      if (!seen) await wait(100);
+    }
+    assert.equal(seen, true, 'le verrou du processus externe doit être vu');
+  } finally {
+    child.kill();
+    await new Promise((r) => child.once('exit', r));
+  }
+  const after = new LogWatcher(t.dir);
+  let released = false;
+  for (let i = 0; i < 30 && !released; i++) {
+    released = !after.heldOpen();
+    if (!released) await wait(100);
+  }
+  assert.equal(released, true, 'le verrou doit disparaître avec le processus');
+});
