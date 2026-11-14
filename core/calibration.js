@@ -9,10 +9,12 @@
 //   Descente : D ∈ [ max(MMR de la 1re apparition en tier t après t+1), min(MMR vus en t+1) [
 // Ces intervalles se resserrent à chaque franchissement observé.
 
+const { ownSamples } = require('./samples');
+
 const MAX_JUMP = 50; // au-delà : reset de saison, on ignore
 
 function calibrate(samples) {
-  const s = samples.filter((x) => x.partySize <= 1).sort((a, b) => a.ts - b.ts);
+  const s = ownSamples(samples);
   const seenMin = {}; // tier -> MMR minimal vu
   const seenMax = {}; // tier -> MMR maximal vu
   const up = {}; // t -> { lo, hi }   (frontière t -> t+1)

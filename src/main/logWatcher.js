@@ -90,9 +90,24 @@ class LogWatcher extends EventEmitter {
     if (st) {
       this.offset = st.size;
       this.birth = st.birthtimeMs;
+      this.primePartyState();
     }
     this.updateActive(st);
     this.timer = setInterval(() => this.poll(), this.intervalMs);
+  }
+
+  // Démarrer en cours de partie : la ligne de connexion (qui suis-je) et la composition du groupe
+  // sont déjà passées. On relit le journal courant avec un lecteur jetable, sans rien émettre,
+  // pour reprendre ces deux informations.
+  primePartyState() {
+    try {
+      const probe = new LogParser();
+      probe.feedText(fs.readFileSync(path.join(this.dir, LIVE_FILE), 'utf8'));
+      this.parser.localId = probe.localId;
+      this.parser.leaderId = probe.leaderId;
+    } catch {
+      // illisible : on repartira de l'état inconnu, donc prudent (groupe = non fiable)
+    }
   }
 
   stop() {

@@ -11,7 +11,7 @@ class Store {
     this.file = file;
     this.samples = [];
     this.settings = { ...DEFAULT_SETTINGS };
-    this.keys = new Set();
+    this.byKey = new Map();
     this.timer = null;
     this.load();
   }
@@ -30,20 +30,30 @@ class Store {
     return `${s.time}|${s.mu}`;
   }
 
+  // Ajoute les relevés inconnus. Un relevé déjà connu mais enregistré sans `leaderIsMe` (anciennes
+  // versions) est complété au passage, pour que l'historique profite de la détection du chef de groupe.
   addSamples(list, { save = true } = {}) {
     let added = 0;
+    let updated = 0;
     for (const s of list) {
       const k = Store.key(s);
-      if (this.keys.has(k)) continue;
-      this.keys.add(k);
+      const known = this.byKey.get(k);
+      if (known) {
+        if (known.leaderIsMe === undefined && s.leaderIsMe !== undefined) {
+          known.leaderIsMe = s.leaderIsMe;
+          updated++;
+        }
+        continue;
+      }
+      this.byKey.set(k, s);
       this.samples.push(s);
       added++;
     }
     if (added) {
       this.samples.sort((a, b) => a.ts - b.ts);
       if (this.samples.length > MAX_SAMPLES) this.samples = this.samples.slice(-MAX_SAMPLES);
-      if (save) this.scheduleSave();
     }
+    if ((added || updated) && save) this.scheduleSave();
     return added;
   }
 

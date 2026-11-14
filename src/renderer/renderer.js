@@ -89,7 +89,8 @@
     el.up.textContent =
       view.toUp != null && view.next ? `${approx(view, lastDiv, view.edgeKnown.promo)}+${view.toUp} pour ${shortNext(view)}` : '';
 
-    if (view.pendingGames > 0) el.note.textContent = `${view.pendingGames} match en attente`;
+    if (view.foreignLatest) el.note.textContent = 'groupe : MMR du chef non compté';
+    else if (view.pendingGames > 0) el.note.textContent = `${view.pendingGames} match en attente`;
     else if (view.zone === 'maintien') el.note.textContent = 'maintien de tier';
     else if (view.zone === 'promotion') el.note.textContent = 'montée en attente';
     else el.note.textContent = '';

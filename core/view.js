@@ -1,16 +1,21 @@
 // Transforme l'historique des relevés en modèle d'affichage.
 const { locate } = require('./ranks');
 const { calibrate } = require('./calibration');
+const { ownSamples } = require('./samples');
 
 const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // une pause > 3 h ouvre une nouvelle session
 const MAX_DELTA = 50; // au-delà : reset de saison / recalibrage, pas un match
 const DEFAULT_GAIN = 9;
 
 function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
-  const samples = allSamples.filter((s) => s.playlist === playlist).sort((a, b) => a.ts - b.ts);
+  const inPlaylist = allSamples.filter((s) => s.playlist === playlist).sort((a, b) => a.ts - b.ts);
+  // Seuls les relevés du joueur comptent : solo, ou groupe dont il est le chef.
+  const samples = ownSamples(inPlaylist);
   if (!samples.length) return { empty: true, playlist };
 
   const latest = samples[samples.length - 1];
+  // La dernière file était-elle celle d'un autre chef de groupe (donc non comptée) ?
+  const foreignLatest = !samples.includes(inPlaylist[inPlaylist.length - 1]);
 
   // Session = série finale sans pause > 3 h
   let start = samples.length - 1;
@@ -20,7 +25,6 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
   const tally = (list) => {
     let w = 0, l = 0;
     for (let i = 1; i < list.length; i++) {
-      if (list[i].partySize > 1 || list[i - 1].partySize > 1) continue; // MMR du chef de groupe : non fiable
       const d = list[i].mmr - list[i - 1].mmr;
       if (d === 0 || Math.abs(d) > MAX_DELTA) continue;
       if (d > 0) w++; else l++;
@@ -33,7 +37,6 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
   const recent = samples.slice(-40);
   const gains = [], losses = [];
   for (let i = 1; i < recent.length; i++) {
-    if (recent[i].partySize > 1 || recent[i - 1].partySize > 1) continue;
     const d = recent[i].mmr - recent[i - 1].mmr;
     if (d === 0 || Math.abs(d) > MAX_DELTA) continue;
     (d > 0 ? gains : losses).push(Math.abs(d));
@@ -101,7 +104,8 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
     avgLoss: Math.round(avgLoss * 10) / 10,
     session,
     history: samples.slice(-30).map((s) => s.mmr),
-    solo: latest.partySize <= 1,
+    inParty: latest.partySize > 1,
+    foreignLatest,
     pendingGames,
     updated: latest.time,
   };
