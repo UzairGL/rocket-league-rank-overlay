@@ -36,21 +36,47 @@ test('sans journal ni historique, la vue est vide avec une raison', () => {
   assert.deepEqual(state.view(), { empty: true, reason: 'no-log' });
 });
 
-test("un nouveau relevé est enregistré, remet à zéro les matchs en attente et prévient l'interface", () => {
+test("un relevé est enregistré et prévient l'interface ; il solde les matchs en attente seulement si le MMR a changé", () => {
   const { state, store, watcher, events } = setup();
-  watcher.emit('finished');
+  watcher.emit('matchEnded', { playlist: 11, pending: 1 });
   assert.equal(state.pendingGames, 1);
-  watcher.emit('sample', sample(1148, 16, 0));
+  // MMR inchangé (forfait dont le résultat est en retard) : le match attend toujours son résultat
+  watcher.emit('sample', { ...sample(1148, 16, 0), absorbs: 0, pendingAfter: 1 });
   assert.equal(store.samples.length, 1);
+  assert.equal(state.pendingGames, 1);
+  // MMR changé : le résultat est arrivé
+  watcher.emit('sample', { ...sample(1157, 16, 10), absorbs: 1, pendingAfter: 0 });
   assert.equal(state.pendingGames, 0);
-  assert.equal(state.view().mmr, 1148);
-  assert.deepEqual(events, ['change', 'change']);
+  assert.equal(state.view().mmr, 1157);
+  assert.deepEqual(events, ['change', 'change', 'change']);
+});
+
+test('les matchs en attente sont suivis par playlist', () => {
+  const { state, watcher } = setup({ samples: [sample(1100, 16, 0)] });
+  watcher.emit('matchEnded', { playlist: 13, pending: 2 });
+  assert.equal(state.pendingGames, 0); // la playlist affichée est la 2v2
+  state.setPlaylist(13);
+  assert.equal(state.pendingGames, 2);
+});
+
+test("l'état repris du journal courant au démarrage donne les matchs déjà en attente", () => {
+  const { state, watcher, events } = setup({ samples: [sample(1100, 16, 0)] });
+  watcher.emit('primed', { pending: { 11: 1 } });
+  assert.equal(state.view().pendingGames, 1);
+  assert.deepEqual(events, ['change']);
+});
+
+test("une nouvelle session ne fait pas oublier un match dont le résultat n'est pas arrivé", () => {
+  const { state, watcher } = setup({ samples: [sample(1100, 16, 0)] });
+  watcher.emit('matchEnded', { playlist: 11, pending: 1 });
+  state.startNewSession();
+  assert.equal(state.pendingGames, 1);
 });
 
 test('les matchs terminés non comptés sont remontés dans la vue', () => {
   const { state, watcher } = setup({ samples: [sample(1100, 16, 0)] });
-  watcher.emit('finished');
-  watcher.emit('finished');
+  watcher.emit('matchEnded', { playlist: 11, pending: 1 });
+  watcher.emit('matchEnded', { playlist: 11, pending: 2 });
   assert.equal(state.view().pendingGames, 2);
 });
 

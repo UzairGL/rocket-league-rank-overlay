@@ -5,7 +5,8 @@ const BASE = Date.parse('2026-11-14T10:00:00');
 function stamp(ts) {
   const d = new Date(ts);
   const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  // Le journal écrit ses heures en UTC.
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
 // Relevé prêt à l'emploi : `min` = minutes écoulées depuis 10:00.
@@ -29,4 +30,8 @@ function logBlock({ mu = 52.3961, tier = 16, time = '2026-11-14 16:20:30', playl
   ].join('\n');
 }
 
-module.exports = { sample, logBlock, stamp };
+// Arrivée dans un match classé / sortie (fin normale, forfait ou déconnexion : même ligne).
+const RANKED_SET = '[100.0] RankedReconnect: RankedReconnectSave_TA_0.SetRankedReconnect() Server=((Reservation=(x)))\n';
+const RANKED_CLEAR = '[200.0] RankedReconnect: RankedReconnectSave_TA_0.ClearRankedReconnect()\n';
+
+module.exports = { sample, logBlock, stamp, RANKED_SET, RANKED_CLEAR };

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { parseLogTime } = require('../../core/logparser');
 
 const MAX_SAMPLES = 5000;
 const DEFAULT_SETTINGS = {
@@ -29,7 +30,10 @@ class Store {
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       this.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
-      this.addSamples(data.samples || [], { save: false });
+      // Les relevés enregistrés par d'anciennes versions avaient une heure lue en heure locale alors que
+      // le journal est en UTC : on la recalcule à partir de `time`, qui est l'information d'origine.
+      const samples = (data.samples || []).map((s) => ({ ...s, ts: Number.isFinite(parseLogTime(s.time)) ? parseLogTime(s.time) : s.ts }));
+      this.addSamples(samples, { save: false });
     } catch {
       // premier lancement ou fichier illisible : on repart d'un état vide
     }
@@ -50,6 +54,15 @@ class Store {
       if (known) {
         if (known.leaderIsMe === undefined && s.leaderIsMe !== undefined) {
           known.leaderIsMe = s.leaderIsMe;
+          updated++;
+        }
+        // Nombre de matchs absorbés (absent des anciens relevés) et heure corrigée.
+        if (known.absorbs === undefined && s.absorbs !== undefined) {
+          known.absorbs = s.absorbs;
+          updated++;
+        }
+        if (s.ts !== undefined && known.ts !== s.ts) {
+          known.ts = s.ts;
           updated++;
         }
         continue;

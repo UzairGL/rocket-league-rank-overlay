@@ -1,11 +1,12 @@
 const { EventEmitter } = require('events');
 const { computeView } = require('../../core/view');
+const { playlistKey } = require('../../core/logparser');
 
 // État de l'overlay, indépendant d'Electron (donc testable) : relie le suivi du journal, le stockage
 // et les réglages, et décide quand la fenêtre doit être visible.
 //
 // Événements :
-//   'change'     le modèle d'affichage a changé (nouvelle file, match terminé, playlist changée)
+//   'change'     le modèle d'affichage a changé (nouvelle file, match terminé ou quitté, playlist changée)
 //   'visibility' la fenêtre doit peut-être apparaître ou disparaître
 //   'web'        les réglages de la page web locale ont changé (démarrer, arrêter, rouvrir)
 //   'reset'      les réglages ont été remis à zéro (la fenêtre doit se replacer)
@@ -14,17 +15,23 @@ class OverlayState extends EventEmitter {
     super();
     this.store = store;
     this.watcher = watcher;
-    this.pendingGames = 0; // matchs terminés dont le résultat n'apparaît qu'à la prochaine file
+    this.pending = {}; // playlist -> matchs terminés (ou quittés) dont le résultat n'est pas encore dans le MMR
     this.gameActive = null; // le jeu tourne ? null = pas encore su (jeu déjà lancé avant l'overlay ou non)
     this.forceShow = false; // l'appli a été relancée à la main : on affiche jusqu'à la fermeture
 
-    watcher.on('sample', (sample) => {
-      store.addSamples([sample]);
-      this.pendingGames = 0;
+    // État repris du journal courant au démarrage (l'overlay a pu être lancé en cours de partie).
+    watcher.on('primed', ({ pending }) => {
+      this.pending = { ...pending };
       this.emit('change');
     });
-    watcher.on('finished', () => {
-      this.pendingGames += 1;
+    watcher.on('sample', (sample) => {
+      store.addSamples([sample]);
+      // Un relevé dont le MMR a changé absorbe les résultats en attente ; sinon ils attendent toujours.
+      this.pending[playlistKey(sample.playlist)] = sample.pendingAfter ?? 0;
+      this.emit('change');
+    });
+    watcher.on('matchEnded', ({ playlist, pending }) => {
+      this.pending[playlistKey(playlist)] = pending;
       this.emit('change');
     });
     watcher.on('active', (active) => {
@@ -39,6 +46,11 @@ class OverlayState extends EventEmitter {
 
   get settings() {
     return this.store.settings;
+  }
+
+  // Matchs de la playlist affichée dont le résultat n'est pas encore connu.
+  get pendingGames() {
+    return this.pending[playlistKey(this.playlist)] || 0;
   }
 
   get playlist() {
@@ -66,7 +78,6 @@ class OverlayState extends EventEmitter {
   // Remet les victoires/défaites de la session à zéro. Le rang, le MMR et l'historique restent.
   startNewSession(now = Date.now()) {
     this.store.set({ sessionStart: now });
-    this.pendingGames = 0;
     this.emit('change');
   }
 

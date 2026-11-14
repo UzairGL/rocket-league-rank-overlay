@@ -1,13 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { LogParser } = require('../core/logparser');
-const { logBlock } = require('./helpers');
+const { LogParser, parseLogTime } = require('../core/logparser');
+const { logBlock, RANKED_SET, RANKED_CLEAR } = require('./helpers');
 
 function parse(text) {
   const samples = [];
-  let finished = 0;
-  new LogParser({ onSample: (s) => samples.push(s), onFinished: () => finished++ }).feedText(text);
-  return { samples, finished };
+  const ended = [];
+  const parser = new LogParser({ onSample: (s) => samples.push(s), onMatchEnded: (e) => ended.push(e) });
+  parser.feedText(text);
+  return { samples, ended, parser };
 }
 
 test('extrait MMR, tier, playlist et heure d\'une entrée en file', () => {
@@ -44,9 +45,83 @@ test('ignore les lignes hors entrée en file', () => {
   assert.equal(parse(stray).samples.length, 0);
 });
 
-test('compte les matchs classés terminés', () => {
-  const text = 'Party: Ranked Game Finished, Clear party member server\nautre\nParty: Ranked Game Finished, Clear party member server\n';
-  assert.equal(parse(text).finished, 2);
+test("l'heure du journal est lue en UTC, donc comparable à Date.now()", () => {
+  const { samples } = parse(logBlock({ time: '2026-11-14 21:32:34' }));
+  assert.equal(samples[0].ts, Date.UTC(2026, 10, 14, 21, 32, 34));
+  assert.equal(parseLogTime('2026-11-14 21:32:34'), Date.UTC(2026, 10, 14, 21, 32, 34));
+});
+
+// --- Matchs classés : fin normale, forfait, doublons, reconnexion ----------------------------------------
+
+test('une fin de match normale est comptée une seule fois, même si le jeu écrit plusieurs « Clear »', () => {
+  const text = logBlock() + RANKED_SET + RANKED_CLEAR + RANKED_CLEAR + RANKED_CLEAR;
+  const { ended } = parse(text);
+  assert.equal(ended.length, 1);
+  assert.deepEqual(ended[0], { playlist: 11, pending: 1 });
+});
+
+test('un forfait ou une déconnexion est compté comme un match terminé', () => {
+  const text = logBlock() + RANKED_SET + 'NetComeGo: TcpipConnection_0 Control channel closed, reason=Disconnect command\n' + RANKED_CLEAR;
+  assert.equal(parse(text).ended.length, 1);
+});
+
+test('les lignes « Ranked Game Finished » ne comptent pas (écrites jusqu\'à trois fois, jamais en cas de forfait)', () => {
+  const text = logBlock() + RANKED_SET + 'Party: Ranked Game Finished, Clear party member server\n'.repeat(3);
+  assert.equal(parse(text).ended.length, 0);
+});
+
+test('un « Clear » sans match classé (entraînement libre, menus) est ignoré', () => {
+  assert.equal(parse(RANKED_CLEAR + RANKED_CLEAR).ended.length, 0);
+});
+
+test("quitter puis se reconnecter au même match ne le compte qu'une fois", () => {
+  const text = logBlock() + RANKED_SET + RANKED_CLEAR + RANKED_SET + RANKED_CLEAR;
+  assert.equal(parse(text).ended.length, 1);
+});
+
+test("un nouveau match sans « Clear » du précédent (jeu fermé de force) termine l'ancien", () => {
+  const text = logBlock({ time: '2026-11-14 20:00:00' }) + RANKED_SET + logBlock({ mu: 53, time: '2026-11-14 20:10:00' }) + RANKED_SET;
+  const { ended } = parse(text);
+  assert.equal(ended.length, 1); // le premier est terminé, le second est en cours
+});
+
+test('nouveau fichier de journal : un match en cours non clos est terminé', () => {
+  const { parser, ended } = parse(logBlock() + RANKED_SET);
+  assert.equal(ended.length, 0);
+  parser.onNewFile();
+  assert.equal(ended.length, 1);
+});
+
+// --- Résultats : combien de matchs chaque changement de MMR absorbe-t-il ? --------------------------------
+
+test('premier relevé : inconnu ; MMR changé : le match terminé ; MMR inchangé : 0', () => {
+  const text =
+    logBlock({ mu: 50, time: '2026-11-14 20:00:00' }) + RANKED_SET + RANKED_CLEAR +
+    logBlock({ mu: 50.45, time: '2026-11-14 20:10:00' }) + RANKED_SET + RANKED_CLEAR +
+    logBlock({ mu: 50.45, time: '2026-11-14 20:20:00' });
+  const { samples } = parse(text);
+  assert.deepEqual(samples.map((s) => s.absorbs), [null, 1, 0]);
+});
+
+test("après un forfait, le résultat arrive en retard : MMR inchangé à la file suivante, puis deux résultats d'un coup", () => {
+  const text =
+    logBlock({ mu: 52.0, time: '2026-11-14 21:32:34' }) + RANKED_SET + RANKED_CLEAR + // forfait
+    logBlock({ mu: 52.0, time: '2026-11-14 21:38:47' }) + RANKED_SET + RANKED_CLEAR + // second match, MMR encore inchangé
+    logBlock({ mu: 51.95, time: '2026-11-14 21:44:31' }); // les deux résultats arrivent : -10 puis +9
+  const { samples, ended } = parse(text);
+  assert.deepEqual(samples.map((s) => s.mmr), [1140, 1140, 1139]);
+  assert.deepEqual(samples.map((s) => s.absorbs), [null, 0, 2]);
+  assert.deepEqual(samples.map((s) => s.pendingAfter), [0, 1, 0]);
+  assert.deepEqual(ended.map((e) => e.pending), [1, 2]);
+});
+
+test('les matchs en attente sont suivis par playlist', () => {
+  const text =
+    logBlock({ mu: 50, playlists: '13', time: '2026-11-14 20:00:00' }) + RANKED_SET + RANKED_CLEAR +
+    logBlock({ mu: 52, playlists: '11', time: '2026-11-14 20:10:00' });
+  const { parser, ended } = parse(text);
+  assert.deepEqual(ended, [{ playlist: 13, pending: 1 }]);
+  assert.deepEqual(parser.pending, { 13: 1 });
 });
 
 const ME = 'Epic|aaaa1111|0';

@@ -63,3 +63,21 @@ test("resetSettings remet les réglages d'origine, garde les relevés, et se mé
   s.flush();
   assert.equal(new Store(file).settings.playlist, 11);
 });
+
+test("l'heure des relevés enregistrés par d'anciennes versions (lue en heure locale) est recalculée en UTC", () => {
+  const file = tmpFile();
+  const wrongLocal = Date.parse('2026-11-14T21:32:34'); // ancienne lecture : heure locale
+  fs.writeFileSync(file, JSON.stringify({ settings: {}, samples: [{ time: '2026-11-14 21:32:34', ts: wrongLocal, mu: 52, mmr: 1140, tier: 16, playlist: 11, partySize: 1 }] }));
+  const s = new Store(file);
+  assert.equal(s.samples[0].ts, Date.UTC(2026, 10, 14, 21, 32, 34));
+});
+
+test("un relevé déjà connu reçoit le nombre de matchs absorbés et l'heure corrigée", () => {
+  const s = new Store(tmpFile());
+  s.addSamples([{ ...sample(1139, 16, 0), ts: 1 }]); // ancien relevé : mauvaise heure, pas de nombre de matchs
+  assert.equal(s.samples[0].absorbs, undefined);
+  s.addSamples([{ ...sample(1139, 16, 0), absorbs: 2 }]);
+  assert.equal(s.samples.length, 1);
+  assert.equal(s.samples[0].absorbs, 2);
+  assert.equal(s.samples[0].ts, sample(1139, 16, 0).ts);
+});

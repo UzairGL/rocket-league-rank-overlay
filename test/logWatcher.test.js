@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { LogWatcher } = require('../src/main/logWatcher');
-const { logBlock } = require('./helpers');
+const { logBlock, RANKED_SET, RANKED_CLEAR } = require('./helpers');
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -14,10 +14,10 @@ function setup(initial = '[1.0] démarrage\n') {
   fs.writeFileSync(file, initial);
   const watcher = new LogWatcher(dir, { intervalMs: 20 });
   const samples = [];
-  let finished = 0;
+  const ended = [];
   watcher.on('sample', (s) => samples.push(s));
-  watcher.on('finished', () => finished++);
-  return { dir, file, watcher, samples, finished: () => finished };
+  watcher.on('matchEnded', (e) => ended.push(e));
+  return { dir, file, watcher, samples, ended };
 }
 
 test('lit uniquement ce qui est écrit après le démarrage', async () => {
@@ -69,13 +69,46 @@ test("démarrer en cours de partie : l'identité et le chef de groupe déjà pas
   assert.equal(t.samples[0].leaderIsMe, true);
 });
 
-test('signale les matchs classés terminés', async () => {
+test('signale un match classé terminé, une seule fois malgré les « Clear » en double', async () => {
   const t = setup();
   t.watcher.start();
-  fs.appendFileSync(t.file, 'Party: Ranked Game Finished, Clear party member server\n');
+  fs.appendFileSync(t.file, logBlock({ mu: 52.45 }) + RANKED_SET + RANKED_CLEAR + RANKED_CLEAR + RANKED_CLEAR);
   await wait(100);
   t.watcher.stop();
-  assert.equal(t.finished(), 1);
+  assert.deepEqual(t.ended, [{ playlist: 11, pending: 1 }]);
+});
+
+test('au démarrage, les matchs terminés non encore résolus du journal courant sont repris', () => {
+  const t = setup(logBlock({ mu: 52.45 }) + RANKED_SET + RANKED_CLEAR);
+  let primed = null;
+  t.watcher.on('primed', (p) => (primed = p));
+  t.watcher.start();
+  t.watcher.stop();
+  assert.deepEqual(primed, { pending: { 11: 1 } });
+});
+
+test("« jeu fermé » n'est annoncé qu'après plusieurs constats d'affilée (une lecture ratée ne compte pas)", () => {
+  const t = setup();
+  let held = true;
+  const w = new LogWatcher(t.dir, { activeMs: 0, isHeldOpen: () => held });
+  const states = [];
+  w.on('active', (a) => states.push(a));
+  const poll = () => w.updateActive(w.stat());
+  poll(); // actif
+  held = false;
+  poll();
+  poll(); // deux constats d'inactivité : on attend encore
+  held = true;
+  poll(); // le jeu est de retour : aucun « fermé » n'a été annoncé
+  assert.deepEqual(states, [true]);
+  held = false;
+  poll();
+  poll();
+  poll(); // trois constats d'affilée : le jeu est bien fermé
+  assert.deepEqual(states, [true, false]);
+  held = true;
+  poll(); // et il est relancé : annoncé tout de suite
+  assert.deepEqual(states, [true, false, true]);
 });
 
 test('readHistory relit le journal et ses sauvegardes sans doublon', () => {

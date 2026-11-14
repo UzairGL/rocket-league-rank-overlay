@@ -8,11 +8,13 @@ const MAX_CHUNK = 4 * 1024 * 1024;
 // Repli quand le verrou n'est pas disponible : le jeu écrit dans son journal toutes les 60 s tant
 // qu'il tourne ; trois minutes sans écriture visible = le jeu est fermé.
 const ACTIVE_MS = 3 * 60 * 1000;
+const INACTIVE_POLLS = 3; // constats d'inactivité d'affilée avant d'annoncer que le jeu est fermé
 
 // Surveille Launch.log en lecture seule : un simple `stat` toutes les `intervalMs`, et une lecture
 // uniquement quand le fichier a grossi. Rien n'est injecté dans le jeu, rien ne lit sa mémoire.
 //
-// Événements : 'sample' (relevé de MMR à l'entrée en file), 'finished' (match classé terminé).
+// Événements : 'sample' (relevé de MMR à l'entrée en file), 'matchEnded' (match classé terminé ou quitté),
+// 'primed' (état repris du journal courant au démarrage), 'active' (le jeu tourne ou non).
 class LogWatcher extends EventEmitter {
   // isHeldOpen : remplaçable pour les tests ; par défaut, la vraie vérification du verrou.
   constructor(dir, { intervalMs = 2000, activeMs = ACTIVE_MS, isHeldOpen } = {}) {
@@ -22,13 +24,14 @@ class LogWatcher extends EventEmitter {
     this.activeMs = activeMs;
     this.isHeldOpen = isHeldOpen || (() => this.heldOpen());
     this.active = null;
+    this.inactiveStreak = 0;
     this.offset = 0;
     this.birth = 0;
     this.rest = '';
     this.timer = null;
     this.parser = new LogParser({
       onSample: (s) => this.emit('sample', s),
-      onFinished: () => this.emit('finished'),
+      onMatchEnded: (info) => this.emit('matchEnded', info),
     });
   }
 
@@ -96,11 +99,17 @@ class LogWatcher extends EventEmitter {
     return this.computeActive(this.stat(), now);
   }
 
+  // « Actif » est annoncé tout de suite ; « inactif » seulement après INACTIVE_POLLS constats d'affilée,
+  // pour qu'une lecture isolée ratée ne fasse pas croire que le jeu a été fermé puis relancé (ce qui
+  // ouvrirait une nouvelle session à tort).
   updateActive(st) {
-    const active = this.computeActive(st);
-    if (active !== this.active) {
-      this.active = active;
-      this.emit('active', active);
+    const raw = this.computeActive(st);
+    if (raw) this.inactiveStreak = 0;
+    else this.inactiveStreak += 1;
+    const next = raw || (this.active === null || this.inactiveStreak >= INACTIVE_POLLS ? false : this.active);
+    if (next !== this.active) {
+      this.active = next;
+      this.emit('active', next);
     }
   }
 
@@ -122,8 +131,8 @@ class LogWatcher extends EventEmitter {
     try {
       const probe = new LogParser();
       probe.feedText(fs.readFileSync(path.join(this.dir, LIVE_FILE), 'utf8'));
-      this.parser.localId = probe.localId;
-      this.parser.leaderId = probe.leaderId;
+      this.parser.adopt(probe);
+      this.emit('primed', { pending: { ...probe.pending } });
     } catch {
       // illisible : on repartira de l'état inconnu, donc prudent (groupe = non fiable)
     }
@@ -143,7 +152,7 @@ class LogWatcher extends EventEmitter {
       this.offset = 0;
       this.rest = '';
       this.birth = st.birthtimeMs;
-      this.parser.pending = null;
+      this.parser.onNewFile();
     }
     if (st.size === this.offset) return;
 
