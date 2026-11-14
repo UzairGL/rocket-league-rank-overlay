@@ -49,6 +49,42 @@ test('compte les matchs classés terminés', () => {
   assert.equal(parse(text).finished, 2);
 });
 
+const ME = 'Epic|aaaa1111|0';
+const FRIEND = 'Epic|bbbb2222|0';
+const login = `Party: HandleLocalPlayerLoginStatusChanged PlayerName=Moi PlayerID=${ME} LoginStatus=LS_LoggedIn IsPrimary=True IsInParty=False\n`;
+const created = "Party: OnPartyCreated bWasSuccessful=(True) InPartyId:'PsyNet-x' \n";
+const member = (n, i, id) => `Party: HandleLobbyMemberStatusUpdate LobbyUID=PsyNet-x Members=${n} MemberIndex=${i} MemberID=${id}\n`;
+
+test('solo : le relevé est toujours au joueur', () => {
+  assert.equal(parse(logBlock({ party: 1 })).samples[0].leaderIsMe, true);
+});
+
+test('groupe créé par le joueur : il en est le chef', () => {
+  const text = login + created + member(1, 0, ME) + member(2, 1, FRIEND) + logBlock({ party: 2 });
+  assert.equal(parse(text).samples[0].leaderIsMe, true);
+});
+
+test("groupe d'un autre joueur : le joueur n'en est pas le chef", () => {
+  const text = login + member(1, 0, FRIEND) + member(2, 1, ME) + logBlock({ party: 2 });
+  assert.equal(parse(text).samples[0].leaderIsMe, false);
+});
+
+test('identité inconnue en groupe : prudence, pas le chef', () => {
+  const text = created + member(2, 1, FRIEND) + logBlock({ party: 2 });
+  assert.equal(parse(text).samples[0].leaderIsMe, false);
+});
+
+test('« pas dans un groupe » efface le chef précédent', () => {
+  const text = login + created + member(1, 0, ME) + 'XPGatedPlaylists: Not currently in a party.\n' + logBlock({ party: 2 });
+  assert.equal(parse(text).samples[0].leaderIsMe, false);
+});
+
+test("aucun identifiant de groupe n'est copié dans les relevés", () => {
+  const text = login + created + member(1, 0, ME) + member(2, 1, FRIEND) + logBlock({ party: 2 });
+  const json = JSON.stringify(parse(text).samples);
+  assert.ok(!json.includes('aaaa1111') && !json.includes('bbbb2222'));
+});
+
 test('ne conserve aucun identifiant de compte', () => {
   const text = logBlock() + 'Matchmaking: StartMatchmaking UniqueId=(Epic|abcdef|0)\n';
   assert.ok(!JSON.stringify(parse(text).samples).includes('abcdef'));

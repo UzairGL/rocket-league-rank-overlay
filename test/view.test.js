@@ -29,10 +29,31 @@ test('ignore les sauts de plus de 50 MMR dans les victoires et défaites', () =>
   assert.equal(v.session.w + v.session.l, 0);
 });
 
-test('ignore les relevés en groupe pour les victoires et défaites', () => {
-  const v = view([sample(1100, 16, 0), sample(1109, 16, 10, { partySize: 2 })]);
+test("un groupe dont le chef n'est pas le joueur n'est pas compté", () => {
+  const v = view([sample(1100, 16, 0), sample(1109, 16, 10, { partySize: 2, leaderIsMe: false })]);
   assert.equal(v.session.w + v.session.l, 0);
-  assert.equal(v.solo, false);
+  assert.equal(v.mmr, 1100); // le MMR d'un autre joueur n'est jamais affiché
+  assert.equal(v.foreignLatest, true);
+});
+
+test('un groupe dont le joueur est le chef est compté comme une file normale', () => {
+  const v = view([
+    sample(1102, 16, 0),
+    sample(1112, 16, 10, { partySize: 2, leaderIsMe: true }),
+    sample(1102, 16, 20, { partySize: 2, leaderIsMe: true }),
+    sample(1112, 16, 30, { partySize: 2, leaderIsMe: true }),
+  ]);
+  assert.equal(v.mmr, 1112);
+  assert.equal(v.session.w, 2);
+  assert.equal(v.session.l, 1);
+  assert.equal(v.inParty, true);
+  assert.equal(v.foreignLatest, false);
+});
+
+test("un relevé de groupe qui ne prolonge pas la progression est écarté, même si le joueur est chef", () => {
+  const v = view([sample(1100, 16, 0), sample(1300, 18, 10, { partySize: 2, leaderIsMe: true })]);
+  assert.equal(v.mmr, 1100);
+  assert.equal(v.foreignLatest, true);
 });
 
 test('une pause de plus de 3 h ouvre une nouvelle session', () => {

@@ -32,6 +32,18 @@ test('repart d\'un état vide quand le fichier est illisible', () => {
   assert.equal(s.settings.playlist, 11);
 });
 
+test("complète un relevé connu enregistré avant la détection du chef de groupe", () => {
+  const file = tmpFile();
+  const a = new Store(file);
+  a.addSamples([sample(1112, 16, 0, { partySize: 2 })]); // ancienne version : pas de leaderIsMe
+  assert.equal(a.samples[0].leaderIsMe, undefined);
+  assert.equal(a.addSamples([sample(1112, 16, 0, { partySize: 2, leaderIsMe: true })]), 0); // pas un nouveau relevé
+  assert.equal(a.samples.length, 1);
+  assert.equal(a.samples[0].leaderIsMe, true);
+  a.flush();
+  assert.equal(new Store(file).samples[0].leaderIsMe, true);
+});
+
 test('garde les relevés triés par date', () => {
   const s = new Store(tmpFile());
   s.addSamples([sample(1118, 16, 20), sample(1100, 16, 0)]);

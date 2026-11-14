@@ -53,6 +53,22 @@ test('repart du début quand le jeu relance un nouveau fichier plus court', asyn
   assert.deepEqual(t.samples.map((s) => s.mmr), [1160]);
 });
 
+test("démarrer en cours de partie : l'identité et le chef de groupe déjà passés sont repris", async () => {
+  const ME = 'Epic|aaaa1111|0';
+  const before =
+    `Party: HandleLocalPlayerLoginStatusChanged PlayerName=Moi PlayerID=${ME} LoginStatus=LS_LoggedIn IsPrimary=True IsInParty=False\n` +
+    "Party: OnPartyCreated bWasSuccessful=(True) InPartyId:'PsyNet-x' \n" +
+    `Party: HandleLobbyMemberStatusUpdate LobbyUID=PsyNet-x Members=1 MemberIndex=0 MemberID=${ME}\n`;
+  const t = setup(before);
+  t.watcher.start();
+  fs.appendFileSync(t.file, logBlock({ mu: 52.45, party: 2, time: '2026-11-14 19:00:00' }));
+  await wait(100);
+  t.watcher.stop();
+  assert.equal(t.samples.length, 1);
+  assert.equal(t.samples[0].partySize, 2);
+  assert.equal(t.samples[0].leaderIsMe, true);
+});
+
 test('signale les matchs classés terminés', async () => {
   const t = setup();
   t.watcher.start();
