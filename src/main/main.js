@@ -3,7 +3,7 @@ const { app, ipcMain } = require('electron');
 const { LogWatcher } = require('./logWatcher');
 const { Store } = require('./store');
 const { OverlayState } = require('./overlayState');
-const { createOverlayWindow } = require('./overlayWindow');
+const { createOverlayWindow, listDisplays } = require('./overlayWindow');
 const { popupMenu, createTray } = require('./menu');
 const { logDir } = require('./paths');
 
@@ -29,10 +29,15 @@ app.whenReady().then(() => {
 
   state = new OverlayState({ store, watcher });
   overlay = createOverlayWindow({ store, state });
-  tray = createTray(state, () => app.quit());
+  const actions = {
+    quit: () => app.quit(),
+    listDisplays,
+    moveToDisplay: overlay.moveToDisplay,
+  };
+  tray = createTray(state, actions);
 
   ipcMain.handle('overlay:get-view', () => state.view());
-  ipcMain.on('overlay:menu', () => popupMenu(state, overlay.window, () => app.quit()));
+  ipcMain.on('overlay:menu', () => popupMenu(state, overlay.window, actions));
   ipcMain.on('overlay:drag', overlay.onDrag);
 
   // En dernier : les écouteurs sont en place, l'état initial « jeu actif ou non » sera pris en compte.

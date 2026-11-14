@@ -31,6 +31,10 @@ class OverlayState extends EventEmitter {
     });
   }
 
+  get settings() {
+    return this.store.settings;
+  }
+
   get playlist() {
     return this.store.settings.playlist;
   }
