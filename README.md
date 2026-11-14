@@ -37,8 +37,10 @@ npm install
 npm start
 ```
 
+- La fenêtre n'apparaît que quand Rocket League tourne (le jeu écrit dans son journal toutes les 60 s ; sans écriture depuis 3 minutes, l'overlay se masque). « Toujours afficher » dans le menu désactive ce comportement.
 - Glisser avec le bouton gauche pour déplacer la fenêtre.
-- Clic droit : choix de la playlist (1v1, 2v2, 3v3) et quitter.
+- Clic droit sur la fenêtre ou sur l'icône de la zone de notification : choix de la playlist (1v1, 2v2, 3v3), « Toujours afficher » et quitter.
+- Relancer `npm start` quand l'appli tourne déjà force l'affichage de la fenêtre.
 - `RL_LOG_DIR` permet de pointer vers un autre dossier de journaux.
 
 L'historique des relevés et la position de la fenêtre sont enregistrés dans le dossier de données de l'application (`%APPDATA%\rocket-league-rank-overlay`).
@@ -53,7 +55,8 @@ core/            logique pure, sans dépendance, entièrement testée
   view.js          historique -> modèle d'affichage (session, segments, distances)
 src/main/        Electron : fenêtre, suivi du journal, stockage
   main.js          fenêtre transparente sans focus, menu, déplacement
-  logWatcher.js    tail incrémental de Launch.log, reprise après relance du jeu
+  logWatcher.js    tail incrémental de Launch.log, reprise après relance du jeu, détection « jeu ouvert »
+  trayIcon.js      icône de la zone de notification dessinée en code
   store.js         historique JSON dédoublonné + réglages
   paths.js         localisation du dossier de journaux
 src/preload/     pont minimal et sûr vers l'interface (contextIsolation)
