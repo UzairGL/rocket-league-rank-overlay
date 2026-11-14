@@ -114,3 +114,30 @@ test('signale quand les divisions sont estimées avec la table du 2v2', () => {
   assert.equal(v.thresholds.specific, false);
   assert.equal(v.tierName, 'Champion I'); // le tier vient du journal
 });
+
+// --- Remise à zéro de la session -----------------------------------------------------------------
+
+test('la session ne compte que les relevés postérieurs à la remise à zéro', () => {
+  const list = [sample(1100, 16, 0), sample(1109, 16, 10), sample(1118, 16, 20), sample(1109, 16, 30)];
+  const sessionStart = sample(0, 0, 15).ts; // remise à zéro entre le 2e et le 3e relevé
+  const v = view(list, { sessionStart });
+  assert.equal(v.session.w, 0); // 1118 est la base de la session : son propre gain est antérieur à la remise à zéro
+  assert.equal(v.session.l, 1);
+  assert.equal(v.session.startMmr, 1118);
+  assert.equal(v.session.net, -9);
+});
+
+test('juste après la remise à zéro : 0 victoire, 0 défaite, le rang et le MMR restent', () => {
+  const list = [sample(1100, 16, 0), sample(1109, 16, 10), sample(1148, 16, 20)];
+  const v = view(list, { sessionStart: sample(0, 0, 25).ts });
+  assert.deepEqual(v.session, { w: 0, l: 0, net: 0, startMmr: 1148 });
+  assert.equal(v.mmr, 1148);
+  assert.equal(v.tierName, 'Champion I');
+});
+
+test("sans remise à zéro (valeur par défaut), la session est celle d'avant", () => {
+  const list = [sample(1100, 16, 0), sample(1109, 16, 10), sample(1100, 16, 20)];
+  const v = view(list);
+  assert.equal(v.session.w, 1);
+  assert.equal(v.session.l, 1);
+});

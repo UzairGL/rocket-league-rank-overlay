@@ -7,7 +7,9 @@ const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // une pause > 3 h ouvre une nouvelle
 const MAX_DELTA = 50; // au-delà : reset de saison / recalibrage, pas un match
 const DEFAULT_GAIN = 9;
 
-function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
+// sessionStart : horodatage (ms) de la dernière remise à zéro de la session ; les relevés antérieurs
+// ne comptent pas dans les victoires/défaites de la session.
+function computeView(allSamples, { playlist = 11, pendingGames = 0, sessionStart = 0 } = {}) {
   const inPlaylist = allSamples.filter((s) => s.playlist === playlist).sort((a, b) => a.ts - b.ts);
   // Seuls les relevés du joueur comptent : solo, ou groupe dont il est le chef.
   const samples = ownSamples(inPlaylist);
@@ -17,10 +19,10 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
   // La dernière file était-elle celle d'un autre chef de groupe (donc non comptée) ?
   const foreignLatest = !samples.includes(inPlaylist[inPlaylist.length - 1]);
 
-  // Session = série finale sans pause > 3 h
+  // Session = série finale sans pause > 3 h, et jamais avant la remise à zéro (manuelle ou au lancement du jeu)
   let start = samples.length - 1;
   while (start > 0 && samples[start].ts - samples[start - 1].ts <= SESSION_GAP_MS) start--;
-  const run = samples.slice(start);
+  const run = samples.slice(start).filter((s) => s.ts >= sessionStart);
 
   const tally = (list) => {
     let w = 0, l = 0;
@@ -31,7 +33,10 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
     }
     return { w, l };
   };
-  const session = { ...tally(run), net: latest.mmr - run[0].mmr, startMmr: run[0].mmr };
+  // Juste après une remise à zéro, aucun relevé n'est encore arrivé : 0 victoire, 0 défaite.
+  const session = run.length
+    ? { ...tally(run), net: latest.mmr - run[0].mmr, startMmr: run[0].mmr }
+    : { w: 0, l: 0, net: 0, startMmr: latest.mmr };
 
   // Gain moyen par victoire / perte moyenne sur les 40 derniers relevés
   const recent = samples.slice(-40);
