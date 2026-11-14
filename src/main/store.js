@@ -8,6 +8,8 @@ const DEFAULT_SETTINGS = {
   y: null,
   displayId: null, // écran choisi dans le menu (null = automatique)
   alwaysShow: false,
+  webEnabled: false, // page web locale (téléphone, OBS, navigateur)
+  webLan: false, // ouverte au réseau local ; sinon seulement ce PC
 };
 
 // Persistance JSON minimale : historique des relevés (pour la calibration d'une saison à l'autre)

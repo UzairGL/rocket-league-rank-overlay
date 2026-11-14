@@ -141,3 +141,14 @@ html, body {
   .seg i { transition: none; }
   .delta, .bump { animation: none; }
 }
+
+/* Page web sur téléphone : le tableau d'affichage s'adapte à la largeur de l'écran. */
+@media (max-width: 480px) {
+  .board { width: calc(100vw - 48px); }
+  .side { flex-basis: 64px; }
+  .score { font-size: 32px; }
+  .mmr { font-size: 30px; }
+}
+
+/* Page web : fond sombre (sans ?transparent). */
+.web-bg, .web-bg body { background: #0d1626; min-height: 100vh; }
