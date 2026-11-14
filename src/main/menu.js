@@ -12,7 +12,7 @@ function displayLabel(d) {
 }
 
 // Reconstruit à chaque ouverture pour refléter les réglages courants.
-// actions : { quit, listDisplays(), moveToDisplay(id|null), web: { urls() }, copy(text), help() }
+// actions : { quit, listDisplays(), moveToDisplay(id|null), web: { urls() }, copy(text), help(), resetSettings() }
 function buildMenu(state, actions) {
   const displays = actions.listDisplays();
   const items = PLAYLISTS.map((p) => ({
@@ -22,6 +22,8 @@ function buildMenu(state, actions) {
     click: () => state.setPlaylist(p.id),
   }));
 
+  items.push({ type: 'separator' });
+  items.push({ label: 'Nouvelle session (remet V et D à zéro)', click: () => state.startNewSession() });
   items.push({ type: 'separator' });
   if (displays.length > 1) {
     items.push({
@@ -65,6 +67,7 @@ function buildMenu(state, actions) {
     for (const url of actions.web.urls()) items.push({ label: `Copier ${url}`, click: () => actions.copy(url) });
   }
   items.push({ type: 'separator' }, { label: 'Overlay invisible ?', click: actions.help });
+  items.push({ label: 'Réinitialiser les réglages…', click: actions.resetSettings });
   items.push({ type: 'separator' }, { label: 'Quitter', click: actions.quit });
   return Menu.buildFromTemplate(items);
 }

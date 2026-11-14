@@ -90,3 +90,53 @@ test("changer de playlist met à jour la vue et le réglage", () => {
   assert.equal(state.view().mmr, 900);
   assert.deepEqual(events, ['change']);
 });
+
+// --- Session et réglages ----------------------------------------------------------------------------
+
+test('« nouvelle session » remet les victoires et défaites à zéro sans toucher au rang', () => {
+  const { state, store, events } = setup({
+    samples: [sample(1100, 16, 0), sample(1109, 16, 10), sample(1100, 16, 20)],
+  });
+  assert.equal(state.view().session.w, 1);
+  state.startNewSession(sample(0, 0, 25).ts);
+  assert.equal(store.settings.sessionStart, sample(0, 0, 25).ts);
+  const v = state.view();
+  assert.deepEqual([v.session.w, v.session.l], [0, 0]);
+  assert.equal(v.mmr, 1100);
+  assert.deepEqual(events, ['change']);
+});
+
+test('lancer le jeu pendant que l\'overlay tourne ouvre une nouvelle session', () => {
+  const { state, store, watcher } = setup({ samples: [sample(1100, 16, 0), sample(1109, 16, 10)] });
+  watcher.emit('active', false); // le jeu est fermé
+  assert.equal(store.settings.sessionStart, 0);
+  watcher.emit('active', true); // le jeu est lancé
+  assert.ok(store.settings.sessionStart > 0);
+  assert.deepEqual([state.view().session.w, state.view().session.l], [0, 0]);
+});
+
+test("un overlay lancé alors que le jeu tourne déjà ne remet pas la session à zéro", () => {
+  const { store, watcher } = setup({ samples: [sample(1100, 16, 0), sample(1109, 16, 10)] });
+  watcher.emit('active', true); // première information : le jeu tourne déjà
+  assert.equal(store.settings.sessionStart, 0);
+  watcher.emit('active', true); // répétition : toujours rien
+  assert.equal(store.settings.sessionStart, 0);
+});
+
+test('« réinitialiser les réglages » remet tout par défaut et garde les relevés', () => {
+  const { state, store, events } = setup({ samples: [sample(1148, 16, 0)] });
+  store.set({ playlist: 13, x: 300, y: 200, displayId: 2, alwaysShow: true, webEnabled: true, webLan: true, sessionStart: 5 });
+  state.resetSettings();
+  assert.deepEqual(store.settings, { playlist: 11, x: null, y: null, displayId: null, alwaysShow: false, webEnabled: false, webLan: false, sessionStart: 0 });
+  assert.equal(store.samples.length, 1);
+  // L'interface se redessine et la visibilité est recalculée (la fenêtre et la page web sont prévenues à part).
+  assert.ok(events.includes('change') && events.includes('visibility'));
+});
+
+test('« réinitialiser les réglages » prévient la fenêtre pour qu\'elle se replace', () => {
+  const { state } = setup();
+  let reset = 0;
+  state.on('reset', () => reset++);
+  state.resetSettings();
+  assert.equal(reset, 1);
+});

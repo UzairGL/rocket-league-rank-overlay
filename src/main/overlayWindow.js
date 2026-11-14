@@ -86,6 +86,7 @@ function createOverlayWindow({ store, state }) {
     const p = placementFor(store);
     win.setPosition(p.x, p.y);
   }
+  state.on('reset', replace);
   screen.on('display-added', replace);
   screen.on('display-removed', replace);
   screen.on('display-metrics-changed', replace);

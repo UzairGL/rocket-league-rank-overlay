@@ -38,6 +38,16 @@ const HELP = {
   buttons: ['OK'],
 };
 
+const RESET_CONFIRM = {
+  type: 'question',
+  title: 'Réinitialiser les réglages',
+  message: 'Remettre tous les réglages à zéro ?',
+  detail: "Position, écran, playlist, « Toujours afficher » et page web locale reviennent à leur valeur d'origine. Ton historique de matchs et ton rang ne sont pas touchés.",
+  buttons: ['Réinitialiser', 'Annuler'],
+  defaultId: 1,
+  cancelId: 1,
+};
+
 // Démarre, arrête ou rouvre la page web selon les réglages.
 async function applyWeb() {
   try {
@@ -65,6 +75,10 @@ app.whenReady().then(() => {
     web: { urls: () => web.urls() },
     copy: (text) => clipboard.writeText(text),
     help: () => dialog.showMessageBox(HELP),
+    resetSettings: async () => {
+      const { response } = await dialog.showMessageBox(RESET_CONFIRM);
+      if (response === 0) state.resetSettings();
+    },
   };
   tray = createTray(state, actions);
 

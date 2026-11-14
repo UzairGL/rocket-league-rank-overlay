@@ -49,3 +49,17 @@ test('garde les relevés triés par date', () => {
   s.addSamples([sample(1118, 16, 20), sample(1100, 16, 0)]);
   assert.deepEqual(s.samples.map((x) => x.mmr), [1100, 1118]);
 });
+
+test("resetSettings remet les réglages d'origine, garde les relevés, et se mémorise", () => {
+  const file = tmpFile();
+  const s = new Store(file);
+  s.addSamples([sample(1100, 16, 0)]);
+  s.set({ playlist: 13, x: 10, y: 20, sessionStart: 99 });
+  s.resetSettings();
+  assert.equal(s.settings.playlist, 11);
+  assert.equal(s.settings.x, null);
+  assert.equal(s.settings.sessionStart, 0);
+  assert.equal(s.samples.length, 1);
+  s.flush();
+  assert.equal(new Store(file).settings.playlist, 11);
+});

@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   y: null,
   displayId: null, // écran choisi dans le menu (null = automatique)
   alwaysShow: false,
+  sessionStart: 0, // horodatage (ms) de la dernière remise à zéro de la session
   webEnabled: false, // page web locale (téléphone, OBS, navigateur)
   webLan: false, // ouverte au réseau local ; sinon seulement ce PC
 };
@@ -65,6 +66,12 @@ class Store {
     return added;
   }
 
+  // Remet tous les réglages à leur valeur d'origine (l'historique des relevés est conservé).
+  resetSettings() {
+    this.settings = { ...DEFAULT_SETTINGS };
+    this.scheduleSave();
+  }
+
   set(settings) {
     Object.assign(this.settings, settings);
     this.scheduleSave();
@@ -86,4 +93,4 @@ class Store {
   }
 }
 
-module.exports = { Store };
+module.exports = { Store, DEFAULT_SETTINGS };
