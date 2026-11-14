@@ -45,6 +45,14 @@ npm start
 
 L'historique des relevés et la position de la fenêtre sont enregistrés dans le dossier de données de l'application (`%APPDATA%\rocket-league-rank-overlay`).
 
+## Paquet Windows (sans Node.js)
+
+```bash
+npm run package
+```
+
+Produit `dist/rocket-league-rank-overlay-win32-x64/` (environ 360 Mo non compressé) avec `rocket-league-rank-overlay.exe` : un dossier à copier ou à zipper, qui se lance sans installer Node.js. Le programme n'est pas signé : Windows SmartScreen affichera un avertissement au premier lancement.
+
 ## Architecture
 
 ```
