@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "scan": "node scripts/scan-logs.js"
+    "scan": "node scripts/scan-logs.js",
+    "screenshot": "electron scripts/screenshot.js"
   },
   "engines": {
     "node": ">=20"
