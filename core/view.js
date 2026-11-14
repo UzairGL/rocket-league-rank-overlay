@@ -1,10 +1,9 @@
 // Transforme l'historique des relevés en modèle d'affichage.
 const { locate, tableFor } = require('./ranks');
 const { calibrate } = require('./calibration');
-const { ownSamples } = require('./samples');
+const { ownSamples, settle } = require('./samples');
 
 const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // une pause > 3 h ouvre une nouvelle session
-const MAX_DELTA = 50; // au-delà : reset de saison / recalibrage, pas un match
 const DEFAULT_GAIN = 9;
 
 // sessionStart : horodatage (ms) de la dernière remise à zéro de la session ; les relevés antérieurs
@@ -24,12 +23,27 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0, sessionStart
   while (start > 0 && samples[start].ts - samples[start - 1].ts <= SESSION_GAP_MS) start--;
   const run = samples.slice(start).filter((s) => s.ts >= sessionStart);
 
+  // Variation moyenne d'un match, mesurée sur les résultats « propres » (un seul match par relevé),
+  // pour répartir victoires et défaites quand plusieurs résultats arrivent ensemble.
+  const recent = samples.slice(-40);
+  const gains = [], losses = [];
+  for (let i = 1; i < recent.length; i++) {
+    const r = settle(recent[i - 1], recent[i]);
+    if (!r || !r.clean) continue;
+    (r.w ? gains : losses).push(Math.abs(recent[i].mmr - recent[i - 1].mmr));
+  }
+  const avg = (a, def) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : def);
+  const avgGain = avg(gains, DEFAULT_GAIN);
+  const avgLoss = avg(losses, DEFAULT_GAIN);
+  const unit = avg([...gains, ...losses], DEFAULT_GAIN);
+
   const tally = (list) => {
     let w = 0, l = 0;
     for (let i = 1; i < list.length; i++) {
-      const d = list[i].mmr - list[i - 1].mmr;
-      if (d === 0 || Math.abs(d) > MAX_DELTA) continue;
-      if (d > 0) w++; else l++;
+      const r = settle(list[i - 1], list[i], unit);
+      if (!r) continue;
+      w += r.w;
+      l += r.l;
     }
     return { w, l };
   };
@@ -37,18 +51,6 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0, sessionStart
   const session = run.length
     ? { ...tally(run), net: latest.mmr - run[0].mmr, startMmr: run[0].mmr }
     : { w: 0, l: 0, net: 0, startMmr: latest.mmr };
-
-  // Gain moyen par victoire / perte moyenne sur les 40 derniers relevés
-  const recent = samples.slice(-40);
-  const gains = [], losses = [];
-  for (let i = 1; i < recent.length; i++) {
-    const d = recent[i].mmr - recent[i - 1].mmr;
-    if (d === 0 || Math.abs(d) > MAX_DELTA) continue;
-    (d > 0 ? gains : losses).push(Math.abs(d));
-  }
-  const avg = (a, def) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : def);
-  const avgGain = avg(gains, DEFAULT_GAIN);
-  const avgLoss = avg(losses, DEFAULT_GAIN);
 
   const { table, specific } = tableFor(playlist);
   const loc = locate(latest.mmr, latest.tier, table);

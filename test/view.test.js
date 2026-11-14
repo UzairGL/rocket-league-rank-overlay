@@ -141,3 +141,32 @@ test("sans remise à zéro (valeur par défaut), la session est celle d'avant", 
   assert.equal(v.session.w, 1);
   assert.equal(v.session.l, 1);
 });
+
+// --- Résultats en retard (forfait) ---------------------------------------------------------------------------
+
+test('session : un forfait dont le résultat arrive avec le match suivant compte une victoire et une défaite', () => {
+  const list = [
+    { ...sample(1139, 16, 0), absorbs: null }, // premier relevé du journal
+    { ...sample(1139, 16, 10), absorbs: 0, pendingAfter: 1 }, // forfait : MMR inchangé, résultat en attente
+    { ...sample(1138, 16, 20), absorbs: 2, pendingAfter: 0 }, // les deux résultats arrivent : -10 puis +9
+    { ...sample(1148, 16, 30), absorbs: 1, pendingAfter: 0 }, // une victoire
+  ];
+  const v = view(list);
+  assert.equal(v.session.w, 2);
+  assert.equal(v.session.l, 1);
+  assert.equal(v.session.net, 9);
+  assert.equal(v.mmr, 1148);
+});
+
+test("la moyenne des gains n'est pas faussée par les résultats groupés", () => {
+  const list = [
+    { ...sample(1100, 16, 0), absorbs: null },
+    { ...sample(1110, 16, 10), absorbs: 1 }, // +10
+    { ...sample(1119, 16, 20), absorbs: 1 }, // +9
+    { ...sample(1119, 16, 30), absorbs: 0 },
+    { ...sample(1118, 16, 40), absorbs: 2 }, // -1 : deux résultats, ne sert pas à la moyenne
+  ];
+  const v = view(list);
+  assert.equal(v.avgGain, 9.5); // (10 + 9) / 2
+  assert.equal(v.avgLoss, 9); // aucune défaite « propre » : valeur par défaut
+});
