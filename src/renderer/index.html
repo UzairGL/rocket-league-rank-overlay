@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rank overlay</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="board" id="board" aria-live="polite">
+    <div class="row sk">
+      <div class="side side-w"><div class="us score"><span id="wins">0</span><small>V</small></div></div>
+      <div class="mid"><div class="us">
+        <div class="mmr" id="mmr">—</div>
+        <div class="rank" id="rank">En attente</div>
+      </div></div>
+      <div class="side side-l"><div class="us score"><span id="losses">0</span><small>D</small></div></div>
+    </div>
+    <div class="segs sk" id="segs"></div>
+    <div class="foot">
+      <span class="foot-l" id="down"></span>
+      <span class="foot-c" id="note"></span>
+      <span class="foot-r" id="up"></span>
+    </div>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>
