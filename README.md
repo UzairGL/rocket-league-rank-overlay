@@ -23,7 +23,7 @@ Aucune injection, aucune lecture de mémoire, aucun réseau : l'appli ne fait qu
 
 - Le journal ne donne le MMR **qu'à l'entrée en file** : juste après un match, l'affichage garde l'ancien MMR et indique « 1 match en attente ».
 - Les seuils de division de `core/ranks.js` viennent de la distribution Tracker Network (plages observées, pas des seuils officiels). Les valeurs approximatives sont précédées de « ≈ ».
-- En groupe (duo), le journal donne le MMR du chef de groupe : ces relevés sont ignorés pour les victoires/défaites.
+- En groupe (duo), le journal donne le MMR du **chef de groupe**. L'appli le compte seulement si tu es le chef (vérifié sur des files en duo où tu avais créé le groupe : le MMR prolongeait bien ta progression) et si le relevé prolonge ta progression sans saut de plus de 50. Quand le chef est ton coéquipier, la file est ignorée et l'overlay l'indique. « Le chef est le membre d'index 0 du groupe » reste une hypothèse : elle n'a pas pu être testée quand c'est l'autre joueur qui crée le groupe.
 - Testé sur un compte Epic, Windows. Compatibilité avec Steam probable mais non vérifiée.
 - Non testé pendant une partie classée avec Easy Anti-Cheat actif. L'appli ne touche pas au jeu, mais je ne peux pas le garantir à la place de Psyonix.
 - Pas de lien avec Psyonix ni Epic Games. « Rocket League » est une marque de Psyonix.
@@ -58,7 +58,8 @@ Produit `dist/rocket-league-rank-overlay-win32-x64/` (environ 360 Mo non compres
 ```
 core/            logique pure, sans dépendance, entièrement testée
   ranks.js         table des rangs 2v2 et localisation d'un MMR
-  logparser.js     extraction des relevés depuis les lignes du journal
+  logparser.js     extraction des relevés depuis les lignes du journal, détection du chef de groupe
+  samples.js       quels relevés sont ceux du joueur (solo, ou groupe dont il est chef)
   calibration.js   apprentissage des seuils de montée/descente (hystérésis)
   view.js          historique -> modèle d'affichage (session, segments, distances)
 src/main/        Electron : fenêtre, suivi du journal, stockage
