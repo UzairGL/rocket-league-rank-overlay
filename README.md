@@ -2,14 +2,11 @@
 
 Petite fenêtre toujours au premier plan qui affiche ton **rang, ta division, ton MMR** et tes **victoires/défaites de session** en 2v2 classé (1v1 et 3v3 au menu), sans toucher au processus du jeu.
 
-```
- ┌────────┬──────────────────────┬────────┐
- │  3 V   │        1148          │  4 D   │
- │        │   Champion I · III   │        │
- └────────┴──────────────────────┴────────┘
-  ▰▰▰▰▰▰  ▰▰▰▰▰▰  ▰▰▰▰▱▱  ▱▱▱▱▱▱      une division par segment
-  −21                          +14 pour Div IV
-```
+![Aperçu de l'overlay : 3 victoires, 4 défaites, 1148 MMR, Champion I division III](docs/overlay.png)
+
+Victoires en bleu, défaites en orange, MMR et rang au centre. La barre est découpée en 4 segments, un par division, avec la distance pour descendre (à gauche) et pour monter (à droite).
+
+> L'image est le rendu réel de l'interface avec de vrais relevés, générée par `npm run screenshot` : ce n'est pas une capture d'écran du jeu.
 
 ## Comment ça marche
 
