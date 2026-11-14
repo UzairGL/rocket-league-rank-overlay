@@ -61,10 +61,21 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
     if (loc.next) nextLabel = loc.next.label;
     if (latest.mmr >= promoAt) zone = 'promotion';
   }
+  const edge = demoAt != null ? demoAt : loc.min - 10; // estimation si jamais observé
   if (firstDiv && loc.prev) {
-    const edge = demoAt != null ? demoAt : loc.min - 10; // estimation si jamais observé
     toDown = Math.max(1, latest.mmr - edge);
     if (latest.mmr < loc.min) zone = 'maintien'; // sous le seuil de montée, mais encore dans le tier
+  }
+
+  // Remplissage des 4 segments (une division par segment) pour la barre d'affichage.
+  let segments = null;
+  if (loc.division) {
+    const idx = loc.division - 1;
+    const lo = zone === 'maintien' ? edge : loc.min;
+    const hi = lastDiv ? promoAt : loc.next ? loc.next.min : null;
+    let frac = hi != null && hi > lo ? (latest.mmr - lo) / (hi - lo) : 1;
+    frac = zone === 'promotion' ? 1 : Math.min(1, Math.max(0, frac));
+    segments = [0, 1, 2, 3].map((k) => (k < idx ? 1 : k === idx ? frac : 0));
   }
 
   return {
@@ -82,6 +93,7 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
     toUp,
     toDown,
     zone,
+    segments,
     edgeKnown: { promo: promoKnown, demo: demoKnown },
     winsToUp: toUp != null ? Math.ceil(toUp / avgGain) : null,
     lossesToDown: toDown != null ? Math.ceil(toDown / avgLoss) : null,
