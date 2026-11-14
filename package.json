@@ -1,0 +1,16 @@
+{
+  "name": "rocket-league-rank-overlay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Overlay local pour suivre son rank, sa division et son MMR en 2v2 classé sur Rocket League, sans toucher au processus du jeu.",
+  "license": "MIT",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/",
+    "scan": "node scripts/scan-logs.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
