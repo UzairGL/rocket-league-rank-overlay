@@ -22,7 +22,7 @@ Aucune injection, aucune lecture de mémoire, aucun réseau : l'appli ne fait qu
 ## Limites connues
 
 - Le journal ne donne le MMR **qu'à l'entrée en file** : juste après un match, l'affichage garde l'ancien MMR et indique « 1 match en attente ».
-- Les seuils de division de `core/ranks.js` viennent de la distribution Tracker Network (plages observées, pas des seuils officiels). Les valeurs approximatives sont précédées de « ≈ ».
+- Les seuils de division (`data/ranks/doubles.json`) viennent de la distribution Tracker Network (plages observées, pas des seuils officiels) et se mettent à jour sans toucher au code, voir `data/README.md`. Les valeurs approximatives sont précédées de « ≈ ». Seul le 2v2 a sa table : en 1v1 et 3v3, le tier vient du journal mais la division est estimée avec la table du 2v2, et l'overlay l'indique.
 - En groupe (duo), le journal donne le MMR du **chef de groupe**. L'appli le compte seulement si tu es le chef (vérifié sur des files en duo où tu avais créé le groupe : le MMR prolongeait bien ta progression) et si le relevé prolonge ta progression sans saut de plus de 50. Quand le chef est ton coéquipier, la file est ignorée et l'overlay l'indique. « Le chef est le membre d'index 0 du groupe » reste une hypothèse : elle n'a pas pu être testée quand c'est l'autre joueur qui crée le groupe.
 - Testé sur un compte Epic, Windows. Compatibilité avec Steam probable mais non vérifiée.
 - Non testé pendant une partie classée avec Easy Anti-Cheat actif. L'appli ne touche pas au jeu, mais je ne peux pas le garantir à la place de Psyonix.
@@ -56,25 +56,42 @@ Produit `dist/rocket-league-rank-overlay-win32-x64/` (environ 360 Mo non compres
 ## Architecture
 
 ```
-core/            logique pure, sans dépendance, entièrement testée
-  ranks.js         table des rangs 2v2 et localisation d'un MMR
-  logparser.js     extraction des relevés depuis les lignes du journal, détection du chef de groupe
-  samples.js       quels relevés sont ceux du joueur (solo, ou groupe dont il est chef)
-  calibration.js   apprentissage des seuils de montée/descente (hystérésis)
-  view.js          historique -> modèle d'affichage (session, segments, distances)
-src/main/        Electron : fenêtre, suivi du journal, stockage
-  main.js          fenêtre transparente sans focus, menu, déplacement
-  logWatcher.js    tail incrémental de Launch.log, reprise après relance du jeu, détection « jeu ouvert »
-  trayIcon.js      icône de la zone de notification dessinée en code
-  store.js         historique JSON dédoublonné + réglages
-  paths.js         localisation du dossier de journaux
-src/preload/     pont minimal et sûr vers l'interface (contextIsolation)
-src/renderer/    interface : HTML/CSS/JS sans framework, polices locales (OFL)
-test/            tests node:test sur données synthétiques
-scripts/         outils de diagnostic sur de vrais journaux (npm run scan)
+core/              logique pure, sans Electron ni accès disque, entièrement testée
+  ranks.js           localisation d'un MMR dans une table de seuils, validation du format
+  logparser.js       extraction des relevés depuis les lignes du journal, détection du chef de groupe
+  samples.js         quels relevés sont ceux du joueur (solo, ou groupe dont il est chef)
+  calibration.js     apprentissage des seuils de montée/descente de tier (hystérésis)
+  view.js            relevés -> modèle d'affichage (session, segments, distances)
+data/              données modifiables sans toucher au code
+  ranks/             une table de seuils de division par playlist (voir data/README.md)
+src/main/          Electron (processus principal)
+  main.js            démarrage et branchement des modules, rien d'autre
+  overlayState.js    état de l'overlay : relie journal, stockage, réglages, visibilité (sans Electron)
+  overlayWindow.js   fenêtre transparente sans focus, déplacement, affichage/masquage
+  menu.js            menu contextuel et icône de la zone de notification
+  logWatcher.js      tail incrémental de Launch.log, reprise après relance du jeu, détection « jeu ouvert »
+  store.js           historique JSON dédoublonné et réglages
+  trayIcon.js        icône dessinée en code
+  paths.js           localisation du dossier de journaux
+src/preload/       pont minimal et sûr vers l'interface (contextIsolation)
+src/renderer/      interface : HTML/CSS/JS sans framework, polices locales (licence OFL)
+test/              tests node:test sur données synthétiques
+scripts/           outils de développement : diagnostic sur de vrais journaux, capture d'écran
+docs/              image du README
+.github/workflows/ vérification automatique (Linux et Windows)
 ```
 
-`core/` ne dépend ni d'Electron ni du système de fichiers : on peut le réutiliser tel quel avec une autre interface.
+Flux de données :
+
+```
+Launch.log --(logWatcher)--> relevés --(store)--> historique
+                                        |
+                       core/view.js <---+--- data/ranks/*.json
+                            |
+                    overlayState --(overlayWindow)--> interface
+```
+
+`core/` ne dépend ni d'Electron ni du système de fichiers : on peut le réutiliser tel quel avec une autre interface. `overlayState.js` non plus, ce qui permet de tester la logique de visibilité sans lancer Electron.
 
 ## Performances
 
