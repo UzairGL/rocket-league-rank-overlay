@@ -7,6 +7,8 @@ const { logDir } = require('./paths');
 
 // Pas de processus GPU : l'overlay n'affiche que du texte et quelques barres.
 app.disableHardwareAcceleration();
+// Fusionne le processus graphique dans le processus principal : un processus et quelques dizaines de Mo en moins.
+app.commandLine.appendSwitch('in-process-gpu');
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
