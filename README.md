@@ -39,11 +39,29 @@ npm start
 
 - La fenêtre n'apparaît que quand Rocket League tourne (le jeu écrit dans son journal toutes les 60 s ; sans écriture depuis 3 minutes, l'overlay se masque). « Toujours afficher » dans le menu désactive ce comportement.
 - Glisser avec le bouton gauche pour déplacer la fenêtre.
-- Clic droit sur la fenêtre ou sur l'icône de la zone de notification : choix de la playlist (1v1, 2v2, 3v3), « Toujours afficher » et quitter.
+- Clic droit sur la fenêtre ou sur l'icône de la zone de notification : playlist (1v1, 2v2, 3v3), écran (si plusieurs), « Toujours afficher », page web locale, aide « Overlay invisible ? » et quitter.
 - Relancer `npm start` quand l'appli tourne déjà force l'affichage de la fenêtre.
 - `RL_LOG_DIR` permet de pointer vers un autre dossier de journaux.
 
 L'historique des relevés et la position de la fenêtre sont enregistrés dans le dossier de données de l'application (`%APPDATA%\rocket-league-rank-overlay`).
+
+## Compatibilité d'affichage
+
+L'overlay est une fenêtre « toujours au premier plan » : il ne s'injecte pas dans le jeu (Easy Anti-Cheat l'interdirait), il se pose par-dessus.
+
+- Mesuré sur un poste Windows 11, jeu en mode sans bordure 2560 × 1440 : la fenêtre s'affiche bien par-dessus le jeu.
+- Windows ne remet pas toujours une fenêtre devant un jeu lancé **après** elle (observé : l'overlay lancé 14 secondes avant le jeu restait caché derrière). L'appli se repose donc au premier plan toutes les 2 secondes tant qu'elle est affichée ; vérifié en plaçant volontairement le jeu devant : elle revient en moins de 2 secondes.
+- Non vérifié : le plein écran « exclusif » du jeu, où Windows peut masquer toute fenêtre externe. Dans ce cas : mode fenêtré ou sans bordure, autre écran, ou page web ci-dessous.
+- Deux écrans : l'overlay s'ouvre par défaut sur l'écran secondaire (menu **Écran** pour choisir). Une position glissée à la main est conservée tant que l'écran reste branché.
+
+## Page web locale
+
+Menu **Page web locale** : la même interface dans un navigateur, sur un téléphone, une tablette ou comme source navigateur d'OBS. Elle n'est jamais cachée par le jeu.
+
+- Désactivée par défaut. Activée, elle n'écoute que sur ce PC (`http://127.0.0.1:49210`).
+- **Ouverte au réseau local** (case du menu) : accessible depuis un téléphone sur le même Wi-Fi. Le pare-feu Windows demandera une autorisation. Il n'y a pas de mot de passe : la page ne montre que le rang, le MMR et la session, aucun identifiant de compte.
+- OBS : ajouter `?transparent` à l'adresse pour un fond transparent.
+- Seuls quelques fichiers d'une liste fixe sont servis, en lecture seule ; les requêtes dont l'en-tête `Host` n'est pas une adresse IP ou `localhost` sont refusées.
 
 ## Paquet Windows (sans Node.js)
 
@@ -69,6 +87,8 @@ src/main/          Electron (processus principal)
   overlayState.js    état de l'overlay : relie journal, stockage, réglages, visibilité (sans Electron)
   overlayWindow.js   fenêtre transparente sans focus, déplacement, affichage/masquage
   menu.js            menu contextuel et icône de la zone de notification
+  placement.js       où poser la fenêtre selon les écrans branchés (fonction pure)
+  webServer.js       page web locale (HTTP + événements en direct), sans Electron
   logWatcher.js      tail incrémental de Launch.log, reprise après relance du jeu, détection « jeu ouvert »
   store.js           historique JSON dédoublonné et réglages
   trayIcon.js        icône dessinée en code
