@@ -4,6 +4,7 @@ const { choosePlacement } = require('./placement');
 
 const WIN_W = 470;
 const WIN_H = 170;
+const RAISE_EVERY_MS = 2000;
 
 // Écrans branchés, dans un format simple pour la logique de placement et le menu.
 function listDisplays() {
@@ -48,11 +49,29 @@ function createOverlayWindow({ store, state }) {
   win.setAlwaysOnTop(true, 'screen-saver');
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
+  // Windows ne remet pas toujours une fenêtre « toujours au premier plan » devant un jeu lancé après
+  // elle : mesuré, l'overlay restait derrière le jeu jusqu'à ce qu'on le repose en haut. On le
+  // repose donc régulièrement tant qu'il est affiché (un appel système, sans effet sur le focus).
+  let keepOnTop = null;
+  function raise() {
+    if (!win.isDestroyed() && win.isVisible()) {
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win.moveTop();
+    }
+  }
+
   function applyVisibility() {
     if (win.isDestroyed()) return;
     const visible = state.shouldShow();
     if (visible && !win.isVisible()) win.showInactive();
     else if (!visible && win.isVisible()) win.hide();
+    if (visible && !keepOnTop) {
+      raise();
+      keepOnTop = setInterval(raise, RAISE_EVERY_MS);
+    } else if (!visible && keepOnTop) {
+      clearInterval(keepOnTop);
+      keepOnTop = null;
+    }
   }
 
   win.once('ready-to-show', applyVisibility);
@@ -71,6 +90,7 @@ function createOverlayWindow({ store, state }) {
   screen.on('display-removed', replace);
   screen.on('display-metrics-changed', replace);
   win.on('closed', () => {
+    clearInterval(keepOnTop);
     screen.removeListener('display-added', replace);
     screen.removeListener('display-removed', replace);
     screen.removeListener('display-metrics-changed', replace);
