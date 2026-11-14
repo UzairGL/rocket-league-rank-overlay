@@ -107,3 +107,10 @@ test('Supersonic Legend : pas de segments ni de montée', () => {
 test('les messages en attente sont transmis', () => {
   assert.equal(view([sample(1100, 16, 0)], { pendingGames: 2 }).pendingGames, 2);
 });
+
+test('signale quand les divisions sont estimées avec la table du 2v2', () => {
+  assert.equal(view([sample(1148, 16, 0)]).thresholds.specific, true);
+  const v = view([sample(1148, 16, 0, { playlist: 13 })], { playlist: 13 });
+  assert.equal(v.thresholds.specific, false);
+  assert.equal(v.tierName, 'Champion I'); // le tier vient du journal
+});

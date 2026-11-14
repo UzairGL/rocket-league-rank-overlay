@@ -93,6 +93,7 @@
     else if (view.pendingGames > 0) el.note.textContent = `${view.pendingGames} match en attente`;
     else if (view.zone === 'maintien') el.note.textContent = 'maintien de tier';
     else if (view.zone === 'promotion') el.note.textContent = 'montée en attente';
+    else if (view.thresholds && !view.thresholds.specific) el.note.textContent = 'divisions estimées (seuils 2v2)';
     else el.note.textContent = '';
 
     fills.forEach((f, i) => {

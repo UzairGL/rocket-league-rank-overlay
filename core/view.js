@@ -1,5 +1,5 @@
 // Transforme l'historique des relevés en modèle d'affichage.
-const { locate } = require('./ranks');
+const { locate, tableFor } = require('./ranks');
 const { calibrate } = require('./calibration');
 const { ownSamples } = require('./samples');
 
@@ -45,7 +45,8 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
   const avgGain = avg(gains, DEFAULT_GAIN);
   const avgLoss = avg(losses, DEFAULT_GAIN);
 
-  const loc = locate(latest.mmr, latest.tier);
+  const { table, specific } = tableFor(playlist);
+  const loc = locate(latest.mmr, latest.tier, table);
 
   // Seuils réels de changement de tier (hystérésis). Le tier du journal fait foi.
   const cal = calibrate(samples);
@@ -104,6 +105,8 @@ function computeView(allSamples, { playlist = 11, pendingGames = 0 } = {}) {
     avgLoss: Math.round(avgLoss * 10) / 10,
     session,
     history: samples.slice(-30).map((s) => s.mmr),
+    // `specific` = false : la playlist n'a pas de table propre, les divisions sont estimées avec celle du 2v2.
+    thresholds: { specific, season: table.meta.season, updated: table.meta.updated },
     inParty: latest.partySize > 1,
     foreignLatest,
     pendingGames,

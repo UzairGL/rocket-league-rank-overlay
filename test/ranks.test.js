@@ -51,3 +51,41 @@ test('le tier du journal fait foi quand il diffère de la table (hystérésis)',
   assert.equal(notYet.tierName, 'Diamond III');
   assert.equal(notYet.mismatch, false);
 });
+
+// --- Fichier de données des seuils -------------------------------------------------------------
+const { validateRanksData, buildTable, tableFor } = require('../core/ranks');
+const doubles = require('../data/ranks/doubles.json');
+
+const clone = () => JSON.parse(JSON.stringify(doubles));
+
+test('le fichier data/ranks/doubles.json est valide et documenté', () => {
+  assert.deepEqual(validateRanksData(doubles), []);
+  assert.equal(doubles.playlist, 11);
+  assert.ok(doubles.source && doubles.updated);
+});
+
+test('rejette une table avec un tier manquant', () => {
+  const d = clone();
+  d.tiers.pop();
+  assert.ok(validateRanksData(d).some((e) => e.includes('22 tiers')));
+});
+
+test('rejette une table dont les seuils ne croissent pas', () => {
+  const d = clone();
+  d.tiers[5].divisions[2] = 100;
+  assert.ok(validateRanksData(d).some((e) => e.includes('non croissants')));
+});
+
+test('rejette un tier avec le mauvais nombre de divisions', () => {
+  const d = clone();
+  d.tiers[0].divisions = [1, 2, 3];
+  assert.ok(validateRanksData(d).some((e) => e.includes('4 divisions attendues')));
+  assert.throws(() => buildTable(d), /Table de rangs invalide/);
+});
+
+test("une playlist sans table propre retombe sur celle du 2v2 en le signalant", () => {
+  assert.equal(tableFor(11).specific, true);
+  const other = tableFor(13);
+  assert.equal(other.specific, false);
+  assert.equal(other.table, tableFor(11).table);
+});

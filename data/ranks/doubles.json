@@ -1,0 +1,31 @@
+{
+  "playlist": 11,
+  "name": "Doubles (2v2) classé",
+  "season": null,
+  "updated": "2026-11-14",
+  "source": "Distribution Tracker Network (plages observées de MMR par division, fournie par l utilisateur). Ce ne sont pas des seuils officiels.",
+  "tiers": [
+    { "name": "Bronze I", "divisions": [-100, 120, 138, 157] },
+    { "name": "Bronze II", "divisions": [170, 179, 198, 217] },
+    { "name": "Bronze III", "divisions": [229, 239, 258, 277] },
+    { "name": "Silver I", "divisions": [294, 299, 318, 337] },
+    { "name": "Silver II", "divisions": [353, 359, 378, 397] },
+    { "name": "Silver III", "divisions": [413, 419, 438, 457] },
+    { "name": "Gold I", "divisions": [472, 479, 498, 517] },
+    { "name": "Gold II", "divisions": [533, 539, 558, 577] },
+    { "name": "Gold III", "divisions": [593, 599, 618, 637] },
+    { "name": "Platinum I", "divisions": [641, 659, 678, 697] },
+    { "name": "Platinum II", "divisions": [711, 719, 738, 757] },
+    { "name": "Platinum III", "divisions": [772, 779, 798, 817] },
+    { "name": "Diamond I", "divisions": [835, 844, 868, 892] },
+    { "name": "Diamond II", "divisions": [915, 924, 948, 972] },
+    { "name": "Diamond III", "divisions": [995, 1004, 1028, 1052] },
+    { "name": "Champion I", "divisions": [1075, 1095, 1128, 1162] },
+    { "name": "Champion II", "divisions": [1195, 1214, 1248, 1282] },
+    { "name": "Champion III", "divisions": [1315, 1334, 1368, 1402] },
+    { "name": "Grand Champion I", "divisions": [1435, 1462, 1498, 1537] },
+    { "name": "Grand Champion II", "divisions": [1575, 1602, 1644, 1677] },
+    { "name": "Grand Champion III", "divisions": [1715, 1744, 1788, 1832] },
+    { "name": "Supersonic Legend", "divisions": [1861] }
+  ]
+}
