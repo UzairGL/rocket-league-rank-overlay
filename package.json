@@ -9,12 +9,14 @@
     "start": "electron .",
     "test": "node --test",
     "scan": "node scripts/scan-logs.js",
-    "screenshot": "electron scripts/screenshot.js"
+    "screenshot": "electron scripts/screenshot.js",
+    "package": "electron-packager . rocket-league-rank-overlay --platform=win32 --arch=x64 --out=dist --overwrite --prune=true --ignore=\"^/(test|scripts|docs|dist|.github|.gitattributes|.gitignore)\" --ignore=\"^/node_modules/(electron|@electron)(/|$)\""
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@electron/packager": "^20.3.0",
     "electron": "^45.3.2"
   }
 }
