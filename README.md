@@ -39,11 +39,22 @@ npm start
 
 - La fenêtre n'apparaît que quand Rocket League tourne (le jeu écrit dans son journal toutes les 60 s ; sans écriture depuis 3 minutes, l'overlay se masque). « Toujours afficher » dans le menu désactive ce comportement.
 - Glisser avec le bouton gauche pour déplacer la fenêtre.
-- Clic droit sur la fenêtre ou sur l'icône de la zone de notification : playlist (1v1, 2v2, 3v3), écran (si plusieurs), « Toujours afficher », page web locale, aide « Overlay invisible ? » et quitter.
+- Clic droit sur la fenêtre ou sur l'icône de la zone de notification : playlist (1v1, 2v2, 3v3), **nouvelle session**, écran (si plusieurs), « Toujours afficher », page web locale, aide « Overlay invisible ? », **réinitialiser les réglages** et quitter.
 - Relancer `npm start` quand l'appli tourne déjà force l'affichage de la fenêtre.
 - `RL_LOG_DIR` permet de pointer vers un autre dossier de journaux.
 
 L'historique des relevés et la position de la fenêtre sont enregistrés dans le dossier de données de l'application (`%APPDATA%\rocket-league-rank-overlay`).
+
+## Session et réinitialisation
+
+Le « V / D » de l'overlay est celui de la **session**, c'est-à-dire les matchs depuis la dernière remise à zéro. Elle repart de zéro :
+- **à la demande** : clic droit, **Nouvelle session** ;
+- **automatiquement au lancement du jeu**, si l'overlay tournait déjà (un overlay lancé alors que le jeu tourne déjà ne remet rien à zéro) ;
+- après une **pause de plus de 3 heures** entre deux files.
+
+Une remise à zéro ne touche ni au rang, ni au MMR, ni à l'historique. Juste après, l'overlay affiche 0 V et 0 D : le premier résultat n'arrive qu'à la file suivante, et le relevé qui sert de point de départ n'est pas compté.
+
+**Réinitialiser les réglages…** (menu, avec confirmation) remet position, écran, playlist, « Toujours afficher » et page web à leur valeur d'origine, sans effacer l'historique.
 
 ## Compatibilité d'affichage
 
