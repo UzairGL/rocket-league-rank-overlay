@@ -55,6 +55,8 @@ Le « V / D » de l'overlay est celui de la **session**, c'est-à-dire les match
 - **automatiquement au lancement du jeu**, si l'overlay tournait déjà (un overlay lancé alors que le jeu tourne déjà ne remet rien à zéro) ;
 - après une **pause de plus de 3 heures** entre deux files.
 
+**Série en cours** : à partir de 2 victoires (pastille bleue) ou 2 défaites (pastille orange) d'affilée, une pastille « 3 victoires d'affilée » apparaît sur le bord haut du tableau. Elle suit la session : une remise à zéro la remet à zéro. Quand un forfait fait arriver une victoire et une défaite en même temps, on ne sait pas laquelle est la plus récente : la série repart alors de zéro plutôt que d'en afficher une fausse.
+
 Une remise à zéro ne touche ni au rang, ni au MMR, ni à l'historique. Juste après, l'overlay affiche 0 V et 0 D : le premier résultat n'arrive qu'à la file suivante, et le relevé qui sert de point de départ n'est pas compté.
 
 **Réinitialiser les réglages…** (menu, avec confirmation) remet position, écran, playlist, « Toujours afficher » et page web à leur valeur d'origine, sans effacer l'historique.
